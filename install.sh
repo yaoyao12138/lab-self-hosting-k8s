@@ -88,6 +88,11 @@ function add-apt-source {
 
 function install-apt-package {
   local required_pkg="$1"
+  local pkg_version="$2"
+  local arg="${required_pkg}"
+  if [[ -n ${pkg_version} ]]; then
+    arg="${required_pkg}=${pkg_version}"
+  fi
 
   local pkg_ok=$(dpkg-query -W --showformat='${Status}\n' ${required_pkg} | grep "install ok installed")
   if [[ -z ${pkg_ok} ]]; then
@@ -104,7 +109,6 @@ function install-helm-release {
   local helm_release_name=$1;     shift
   local helm_release_namespace=$1;shift
   local helm_chart_name=$1;       shift
-  local helm_chart_version=$1;    shift
   local helm_chart_ref="${helm_repository_name}/${helm_chart_name}"
 
   # Update helm repo
@@ -119,7 +123,7 @@ function install-helm-release {
 
   # Install helm release
   ${HELM} upgrade --install "${helm_release_name}" --namespace "${helm_release_namespace}" --kubeconfig "${KUBECONFIG}" \
-    "${helm_chart_ref}" --version ${helm_chart_version} $@ 2>/dev/null
+    "${helm_chart_ref}" $@ 2>/dev/null
 
   wait-deployment ${helm_chart_name} ${helm_release_namespace}
 }
@@ -255,7 +259,7 @@ function install-instana-console {
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
-  install-apt-package "instana-console=${INSTANA_VERSION}"
+  install-apt-package "instana-console" ${INSTANA_VERSION}
 
   info "Installing Instana console ${INSTANA_VERSION}...OK"
 }
@@ -294,12 +298,10 @@ function install-nfs-provisioner {
   local helm_release_name="nfs-subdir-external-provisioner"
   local helm_release_namespace="default"
   local helm_chart_name="nfs-subdir-external-provisioner"
-  local helm_chart_version="${NFS_PROVISIONER_VERSION}"
 
   install-helm-release \
     ${helm_repository_name} ${helm_repository_url} \
-    ${helm_release_name} ${helm_release_namespace} \
-    ${helm_chart_name} ${helm_chart_version} \
+    ${helm_release_name} ${helm_release_namespace} ${helm_chart_name} \
     --set nfs.server=${NFS_HOST} --set nfs.path=${NFS_PATH}
 
   info "Installing NFS provisioner ${NFS_PROVISIONER_VERSION}...OK"
@@ -316,7 +318,7 @@ function install-instana-kubectl-plugin {
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
-  install-apt-package "instana-kubectl=${INSTANA_VERSION}"
+  install-apt-package "instana-kubectl" ${INSTANA_VERSION}
 
   info "Installing Instana kubectl plugin ${INSTANA_VERSION}...OK"
 }
@@ -394,8 +396,17 @@ function setup-network {
 # Pull and load images
 ####################
 
-function pull-and-load-images {
-  info "Pulling and loading images..."
+function pull-images {
+  info "Pulling images..."
+
+  instana images pull --key ${INSTANA_DOWNLOAD_KEY}
+  echo
+
+  info "Pulling images...OK"
+}
+
+function load-images {
+  info "Loading images..."
 
   if ! command -v docker >/dev/null 2>&1; then
     echo "docker not installed, exit."
@@ -404,18 +415,14 @@ function pull-and-load-images {
     DOCKER=docker
   fi
 
-  for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
-    echo "Pulling and loading image: ${i}"
-    if echo "${i}" | grep ":master\s*$" >/dev/null || echo "${i}" | grep ":latest\s*$" >/dev/null || \
-      ! ${DOCKER} inspect --type=image "${i}" >/dev/null 2>&1; then
-      ${DOCKER} pull "${i}"
-    fi
-    ${DOCKER} save > ${DEPLOY_LOCAL_WORKDIR}/tmp-image.tar "${i}"
-    ${KIND} load image-archive --name="${KIND_CLUSTER_NAME}" ${DEPLOY_LOCAL_WORKDIR}/tmp-image.tar
-    rm -f ${DEPLOY_LOCAL_WORKDIR}/tmp-image.tar
+  local required_images=( $(instana images version) )
+  local nodes="${KIND_CLUSTER_NAME}-worker,${KIND_CLUSTER_NAME}-worker2,${KIND_CLUSTER_NAME}-worker3"
+  for i in ${required_images[@]+"${required_images[@]}"}; do
+    echo "Loading image: ${i}"
+    ${KIND} load docker-image --name="${KIND_CLUSTER_NAME}" --nodes=${nodes} ${i}
   done
 
-  info "Pulling and loading images...OK"
+  info "Loading images...OK"
 }
 
 ####################
@@ -432,9 +439,6 @@ It installed following tools and applitions:
 - The command-line tool instana-console (Build ${INSTANA_VERSION})
 
 EOF
-
-  elapsed_time=$(($SECONDS - $start_time))
-  echo "Total elapsed time: $elapsed_time seconds"
 }
 
 function print-summary-k8 {
@@ -456,7 +460,9 @@ ln -s -f ${KIND} /usr/local/bin/kind
 ln -s -f ${HELM} /usr/local/bin/helm
 
 EOF
+}
 
+function print-elapsed {
   elapsed_time=$(($SECONDS - $start_time))
   echo "Total elapsed time: $elapsed_time seconds"
 }
@@ -500,7 +506,7 @@ function print-help {
   cat << EOF
 Examples:
 $0 db
-$0 load-images
+$0 pull-images
 $0 k8
 $0 clean-db
 $0 clean-k8
@@ -519,22 +525,25 @@ case $1 in
     install-instana-console
     install-instana-db
     print-summary-db
+    print-elapsed
     ;;
-  "load-images")
+  "pull-images")
     install-instana-console
-    REQUIRED_IMAGES=( $(instana images version) )
-    pull-and-load-images
+    pull-images
+    print-elapsed
     ;;
   "k8")
     install-kind
     install-kubectl
     install-helm
     kind-up
+    # load-images
     install-nfs-provisioner
     install-instana-kubectl-plugin
-    install-instana
-    setup-network
+    # install-instana
+    # setup-network
     print-summary-k8
+    print-elapsed
     ;;
   "clean-db")
     clean-instana-db
