@@ -267,10 +267,10 @@ function install-instana-console {
 function install-instana-db {
   info "Installing Instana DB ${INSTANA_VERSION}..."
 
-  mkdir -p /mnt/metrics     // cassandra data dir
-  mkdir -p /mnt/traces      // clickhouse data dir
-  mkdir -p /mnt/data        // elastic, cockroachdb and kafka data dir
-  mkdir -p /mnt/log/instana // log dir for db's
+  mkdir -p /mnt/metrics     # cassandra data dir
+  mkdir -p /mnt/traces      # clickhouse data dir
+  mkdir -p /mnt/data        # elastic, cockroachdb and kafka data dir
+  mkdir -p /mnt/log/instana # log dir for db's
 
   echo "Installing Instana DB using the provided settings..."
   cat ${ROOT_DIR}/conf/settings-db.hcl.tpl | \
@@ -493,16 +493,22 @@ function clean-instana-db {
 }
 
 ####################
+# Print help
+####################
+
+function print-help {
+  cat << EOF
+Examples:
+$0 db
+$0 load-images
+$0 k8
+$0 clean-db
+$0 clean-k8
+EOF
+}
+
+####################
 # Main entrance
-#
-# Examples:
-#
-# ./install.sh db
-# ./install.sh load-images
-# ./install.sh k8
-# ./install.sh clean-db
-# ./install.sh clean-k8
-#
 ####################
 
 start_time=$SECONDS
@@ -536,5 +542,8 @@ case $1 in
   "clean-k8")
     install-kind
     kind-down
+    ;;
+  *)
+    print-help
     ;;
 esac
