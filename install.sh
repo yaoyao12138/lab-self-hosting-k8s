@@ -365,7 +365,11 @@ function install-instana {
   info "Installing Instana ${INSTANA_VERSION}..."
 
   echo "Creating self-signed certificate..."
-  openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=*.${INSTANA_HOST}"
+  if [[ ! -f ${DEPLOY_LOCAL_WORKDIR}/tls.key || ! -f ${DEPLOY_LOCAL_WORKDIR}/tls.crt ]]; then
+    openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=*.${INSTANA_HOST}"
+  else
+    echo "Self-signed certificate detected"
+  fi
 
   echo "Generating dhparams..."
   openssl dhparam -out ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem 1024
@@ -400,6 +404,10 @@ spec:
     requests:
       storage: 10Gi
 EOF
+
+  wait-deployment instana-core acceptor
+  wait-deployment instana-core ingress-core
+  wait-deployment instana-units ingress
 
   info "Installing Instana ${INSTANA_VERSION}...OK"
 }
