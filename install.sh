@@ -349,6 +349,7 @@ function install-instana {
   openssl dhparam -out ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem 1024
 
   echo "Applying Instana using the provided settings..."
+  INSTANA_DB_HOSTIP="$(host ${INSTANA_DB_HOST} | awk '/has.*address/{print $NF; exit}')"
   cat ${ROOT_DIR}/conf/settings.hcl.tpl | \
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_SALES_KEY|${INSTANA_SALES_KEY}|g; \
