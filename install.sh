@@ -324,15 +324,15 @@ function install-nfs-provisioner {
 ####################
 
 function install-kubectl-instana-plugin {
-  info "Installing Instana kubectl plugin ${INSTANA_VERSION}..."
+  info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION}..."
 
   add-apt-source "instana-product.list" "https://self-hosted.instana.io/apt" \
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
-  install-apt-package "instana-kubectl" ${INSTANA_VERSION}
+  install-apt-package "instana-kubectl" ${INSTANA_KUBECTL_PLUGIN_VERSION}
 
-  info "Installing Instana kubectl plugin ${INSTANA_VERSION}...OK"
+  info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION}...OK"
 }
 
 ####################
@@ -381,8 +381,7 @@ function install-instana {
       s|@@INSTANA_DB_HOSTIP|${INSTANA_DB_HOSTIP}|g; \
       s|@@ROOT_DIR|${ROOT_DIR}|g; \
       s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
-  # kubectl-instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
-  ${KUBECTL} --kubeconfig ${KUBECONFIG} instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
+  ${KUBECTL} instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
 
   wait-ns instana-core
 
@@ -490,7 +489,7 @@ It launched a kind cluster, installed following tools and applitions:
 - kubectl ${KUBECTL_VERSION}
 - helm ${HELM3_VERSION}
 - NFS provisioner
-- The kubectl plugin instana (Build ${INSTANA_VERSION})
+- The kubectl plugin instana (Build ${INSTANA_KUBECTL_PLUGIN_VERSION})
 - Self-hosted Instana on Kubernetes (Build ${INSTANA_VERSION})
 - Apache
 
@@ -551,6 +550,7 @@ machine and Self-hosted Instana on Kubernetes on a KIND cluster running on anoth
 machine.
 
 Usage Examples:
+
 # Install Single-hosted Instana Database Layer
 $0 db
 # Install Self-hosted Instana on Kubernetes on KIND cluster

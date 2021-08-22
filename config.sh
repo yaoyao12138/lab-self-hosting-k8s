@@ -15,6 +15,7 @@ INSTANA_DOWNLOAD_KEY="your download key"
 INSTANA_SALES_KEY="your sales key"
 # The version of Instana
 INSTANA_VERSION=${INSTANA_VERSION:-205-2}
+INSTANA_KUBECTL_PLUGIN_VERSION=${INSTANA_KUBECTL_PLUGIN_VERSION:-205-0}
 # Your Instana hostname
 INSTANA_HOST=${INSTANA_HOST:-$(hostname)}
 # Your Instana db hostname
