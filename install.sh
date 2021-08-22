@@ -372,7 +372,11 @@ function install-instana {
   fi
 
   echo "Generating dhparams..."
-  openssl dhparam -out ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem 1024
+  if [[ ! -f ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem ]]; then
+    openssl dhparam -out ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem 1024
+  else
+    echo "dhparams detected"
+  fi
 
   echo "Applying Instana using the provided settings..."
   INSTANA_DB_HOSTIP="$(host ${INSTANA_DB_HOST} | awk '/has.*address/{print $NF; exit}')"
@@ -405,9 +409,9 @@ spec:
       storage: 10Gi
 EOF
 
-  wait-deployment instana-core acceptor
-  wait-deployment instana-core ingress-core
-  wait-deployment instana-units ingress
+  wait-deployment acceptor instana-core
+  wait-deployment ingress-core instana-core
+  wait-deployment ingress instana-units
 
   info "Installing Instana ${INSTANA_VERSION}...OK"
 }
