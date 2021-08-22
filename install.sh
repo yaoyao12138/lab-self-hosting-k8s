@@ -303,7 +303,7 @@ function install-instana-db {
 ####################
 
 function install-nfs-provisioner {
-  info "Installing NFS provisioner ${NFS_PROVISIONER_VERSION}..."
+  info "Installing NFS provisioner..."
 
   local helm_repository_name="nfs-subdir-external-provisioner"
   local helm_repository_url="https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner"
@@ -316,7 +316,7 @@ function install-nfs-provisioner {
     ${helm_release_name} ${helm_release_namespace} ${helm_chart_name} \
     --set nfs.server=${NFS_HOST} --set nfs.path=${NFS_PATH}
 
-  info "Installing NFS provisioner ${NFS_PROVISIONER_VERSION}...OK"
+  info "Installing NFS provisioner...OK"
 }
 
 ####################
@@ -336,6 +336,28 @@ function install-kubectl-instana-plugin {
 }
 
 ####################
+# Generate Instana license
+####################
+
+function generate-instana-license {
+  info "Generating Instana license..."
+
+  instana license download --key=${INSTANA_SALES_KEY}
+
+  if [[ -f license ]]; then
+    local lic_text="$(cat license)"
+    lic_text="${lic_text%\]}"
+    lic_text="${lic_text#\[}"
+    lic_text="${lic_text%\"}"
+    lic_text="${lic_text#\"}"
+    echo "$lic_text" > ${DEPLOY_LOCAL_WORKDIR}/license
+    rm -f license 
+  fi
+
+  info "Generating Instana license...OK"
+}
+
+####################
 # Install Instana
 ####################
 
@@ -350,6 +372,7 @@ function install-instana {
 
   echo "Applying Instana using the provided settings..."
   INSTANA_DB_HOSTIP="$(host ${INSTANA_DB_HOST} | awk '/has.*address/{print $NF; exit}')"
+  INSTANA_LICENSE=${DEPLOY_LOCAL_WORKDIR}/license
   cat ${ROOT_DIR}/conf/settings.hcl.tpl | \
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_SALES_KEY|${INSTANA_SALES_KEY}|g; \
@@ -358,7 +381,8 @@ function install-instana {
       s|@@INSTANA_DB_HOSTIP|${INSTANA_DB_HOSTIP}|g; \
       s|@@ROOT_DIR|${ROOT_DIR}|g; \
       s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
-  kubectl-instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
+  # kubectl-instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
+  ${KUBECTL} --kubeconfig ${KUBECONFIG} instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
 
   wait-ns instana-core
 
@@ -465,7 +489,7 @@ It launched a kind cluster, installed following tools and applitions:
 - kind ${KIND_VERSION}
 - kubectl ${KUBECTL_VERSION}
 - helm ${HELM3_VERSION}
-- NFS provisioner ${NFS_PROVISIONER_VERSION}
+- NFS provisioner
 - The kubectl plugin instana (Build ${INSTANA_VERSION})
 - Self-hosted Instana on Kubernetes (Build ${INSTANA_VERSION})
 - Apache
@@ -520,11 +544,20 @@ function clean-instana-db {
 
 function print-help {
   cat << EOF
-Examples:
+The Opinionated Sandbox for Self-hosted Instana on Kubernetes
+
+By using this script, you can install Single-hosted Instana Database Layer on one
+machine and Self-hosted Instana on Kubernetes on a KIND cluster running on another
+machine.
+
+Usage Examples:
+# Install Single-hosted Instana Database Layer
 $0 db
-$0 pull-images
+# Install Self-hosted Instana on Kubernetes on KIND cluster
 $0 k8
+# Clean Single-hosted Instana Database Layer installation
 $0 clean-db
+# Clean Self-hosted Instana on Kubernetes
 $0 clean-k8
 EOF
 }
@@ -556,6 +589,7 @@ case $1 in
     load-images
     install-nfs-provisioner
     install-kubectl-instana-plugin
+    generate-instana-license
     install-instana
     setup-network
     print-summary-k8
