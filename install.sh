@@ -429,6 +429,8 @@ function setup-network {
   a2enmod headers
 
   service apache2 restart
+
+  info "Setting up Instana networking...OK"
 }
 
 ####################

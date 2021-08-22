@@ -21,4 +21,4 @@ INSTANA_HOST=${INSTANA_HOST:-$(hostname)}
 # Your Instana db hostname
 INSTANA_DB_HOST=${INSTANA_DB_HOST:-$(hostname)}
 # Your NFS hostname
-NFS_HOST=${NFS_HOST:-INSTANA_DB_HOST}
+NFS_HOST=${NFS_HOST:-$INSTANA_DB_HOST}
