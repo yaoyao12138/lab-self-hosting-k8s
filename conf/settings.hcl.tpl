@@ -14,22 +14,22 @@ email {                                            # configure this so instana c
 }
 token_secret = "randomstring"                      # Secret for generating the tokens used to communicate with instana
 databases "cassandra"{                             # Database definitions, see below the code block for a detailed explanation.
-    nodes = ["@@INSTANA_DB_HOST"]
+    nodes = ["@@INSTANA_DB_HOSTIP"]
 }
 databases "cockroachdb"{
-    nodes = ["@@INSTANA_DB_HOST"]
+    nodes = ["@@INSTANA_DB_HOSTIP"]
 }
 databases "clickhouse"{
-    nodes = ["@@INSTANA_DB_HOST"]
+    nodes = ["@@INSTANA_DB_HOSTIP"]
 }
 databases "elasticsearch"{
-    nodes = ["@@INSTANA_DB_HOST"]
+    nodes = ["@@INSTANA_DB_HOSTIP"]
 }
 databases "kafka"{
-    nodes = ["@@INSTANA_DB_HOST"]
+    nodes = ["@@INSTANA_DB_HOSTIP"]
 }
 databases "zookeeper"{
-    nodes = ["@@INSTANA_DB_HOST"]
+    nodes = ["@@INSTANA_DB_HOSTIP"]
 }
 profile = "small"                                  # Specify the memory/cpu-profile to be used for components
 spans_location {                                   # Spans can be stored in either s3 or on disk, this is an s3 example

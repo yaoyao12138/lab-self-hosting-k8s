@@ -37,9 +37,30 @@ mkdir -p ${TOOLS_HOST_DIR}
 
 CYAN="\033[0;36m"
 NORMAL="\033[0m"
+RED="\033[0;31m"
 
 function info {
-  echo -e "${CYAN}INFO ${NORMAL}$@" >&2
+  echo -e "${CYAN}INFO  ${NORMAL}$@" >&2
+}
+
+function error {
+  echo -e "${RED}ERROR ${NORMAL}$@" >&2
+}
+
+function wait-ns {
+  local ns=$1
+  echo -n "Waiting for namespace $ns ready"
+  retries=100
+  until [[ $retries == 0 ]]; do
+    echo -n "."
+    local result=$(${KUBECTL} --kubeconfig ${KUBECONFIG} get ns $ns -o name 2>/dev/null)
+    if [[ $result == "namespace/$ns" ]]; then
+      echo "done"
+      break
+    fi
+    sleep 1
+    retries=$((retries - 1))
+  done
 }
 
 function wait-deployment {
@@ -51,22 +72,6 @@ function wait-deployment {
     echo -n "."
     local result=$(${KUBECTL} --kubeconfig ${KUBECONFIG} get deploy $object -n $ns -o jsonpath='{.status.readyReplicas}' 2>/dev/null)
     if [[ $result == 1 ]]; then
-      echo "done"
-      break
-    fi
-    sleep 1
-    retries=$((retries - 1))
-  done
-}
-
-function wait-package {
-  local package=$1
-  echo -n "Waiting for package $package ready"
-  retries=100
-  until [[ $retries == 0 ]]; do
-    echo -n "."
-    local result=$(${KUBECTL} --kubeconfig ${KUBECONFIG} get configuration.pkg.crossplane.io $package -o jsonpath='{range .status.conditions[*]}{.type}:{.status} {end}' 2>/dev/null)
-    if [[ $result =~ Installed:True && $result =~ Healthy:True ]]; then
       echo "done"
       break
     fi
@@ -94,12 +99,19 @@ function install-apt-package {
     arg="${required_pkg}=${pkg_version}"
   fi
 
-  local pkg_ok=$(dpkg-query -W --showformat='${Status}\n' ${required_pkg} | grep "install ok installed")
+  local pkg_ok=$(dpkg-query -W --showformat='${Status} [${Version}]\n' ${required_pkg} | grep "install ok installed")
   if [[ -z ${pkg_ok} ]]; then
     apt-get update
     apt-get --yes install ${required_pkg}
   else
-    echo "${required_pkg} detected."
+    if [[ -n ${pkg_version} ]]; then
+      if [[ ! ${pkg_ok} =~ "[${pkg_version}]" ]]; then
+        error "${required_pkg} detected but version mismatch, please uninstall the exiting version first."
+        exit 1
+      fi
+    else
+      echo "${required_pkg} detected."
+    fi
   fi
 }
 
@@ -274,12 +286,12 @@ function install-instana-db {
   mkdir -p /mnt/metrics     # cassandra data dir
   mkdir -p /mnt/traces      # clickhouse data dir
   mkdir -p /mnt/data        # elastic, cockroachdb and kafka data dir
-  mkdir -p /mnt/log/instana # log dir for db's
+  mkdir -p /mnt/log         # log dir for db's
 
   echo "Installing Instana DB using the provided settings..."
   cat ${ROOT_DIR}/conf/settings-db.hcl.tpl | \
-    sed -e "s/@@INSTANA_DOWNLOAD_KEY/${INSTANA_DOWNLOAD_KEY}/g; \
-      s/@@INSTANA_DB_HOST/${INSTANA_DB_HOST}/g;" > ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl
+    sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
+      s|@@INSTANA_DB_HOST|${INSTANA_DB_HOST}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl
 
   instana datastores init --file ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl --force
 
@@ -311,7 +323,7 @@ function install-nfs-provisioner {
 # Install Instana kubectl plugin
 ####################
 
-function install-instana-kubectl-plugin {
+function install-kubectl-instana-plugin {
   info "Installing Instana kubectl plugin ${INSTANA_VERSION}..."
 
   add-apt-source "instana-product.list" "https://self-hosted.instana.io/apt" \
@@ -331,20 +343,23 @@ function install-instana {
   info "Installing Instana ${INSTANA_VERSION}..."
 
   echo "Creating self-signed certificate..."
-  openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=${INSTANA_HOST}"
+  openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=*.${INSTANA_HOST}"
 
   echo "Generating dhparams..."
   openssl dhparam -out ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem 1024
 
   echo "Applying Instana using the provided settings..."
   cat ${ROOT_DIR}/conf/settings.hcl.tpl | \
-    sed -e "s/@@INSTANA_DOWNLOAD_KEY/${INSTANA_DOWNLOAD_KEY}/g; \
-      s/@@INSTANA_SALES_KEY/${INSTANA_SALES_KEY}/g; \
-      s/@@INSTANA_HOST/${INSTANA_HOST}/g; \
-      s/@@INSTANA_DB_HOST/${INSTANA_DB_HOST}/g; \
-      s/@@ROOT_DIR/${ROOT_DIR}/g; \
-      s/@@DEPLOY_LOCAL_WORKDIR/${DEPLOY_LOCAL_WORKDIR}/g;" > ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
-  ${KUBECTL} --kubeconfig ${KUBECONFIG} instana settings --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
+    sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
+      s|@@INSTANA_SALES_KEY|${INSTANA_SALES_KEY}|g; \
+      s|@@INSTANA_LICENSE|${INSTANA_LICENSE}|g; \
+      s|@@INSTANA_HOST|${INSTANA_HOST}|g; \
+      s|@@INSTANA_DB_HOSTIP|${INSTANA_DB_HOSTIP}|g; \
+      s|@@ROOT_DIR|${ROOT_DIR}|g; \
+      s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
+  kubectl-instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
+
+  wait-ns instana-core
 
   echo "Creating persistent volume claim..."
   cat << EOF | ${KUBECTL} --kubeconfig ${KUBECONFIG} apply -f -
@@ -373,15 +388,15 @@ function setup-network {
   info "Setting up Instana networking..."
 
   echo "Exposing Instana networking..."
-  ${KUBECTL} --kubeconfig ${KUBECONFIG} apply -f ${ROOT_DIR}/networking.yaml
+  ${KUBECTL} --kubeconfig ${KUBECONFIG} apply -f ${ROOT_DIR}/conf/networking.yaml
   
   echo "Installing apache..."
   install-apt-package "apache2"
 
   echo "Configuring apache for Instana..."
   cat ${ROOT_DIR}/conf/instana-ssl.conf.tpl | \
-    sed -e "s/@@INSTANA_HOST/${INSTANA_HOST}/g; \
-      s/@@DEPLOY_LOCAL_WORKDIR/${DEPLOY_LOCAL_WORKDIR}/g;" > /etc/apache2/sites-available/instana-ssl.conf
+    sed -e "s|@@INSTANA_HOST|${INSTANA_HOST}|g; \
+      s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > /etc/apache2/sites-available/instana-ssl.conf
   a2ensite instana-ssl
 
   a2enmod proxy
@@ -537,11 +552,11 @@ case $1 in
     install-kubectl
     install-helm
     kind-up
-    # load-images
+    load-images
     install-nfs-provisioner
-    install-instana-kubectl-plugin
-    # install-instana
-    # setup-network
+    install-kubectl-instana-plugin
+    install-instana
+    setup-network
     print-summary-k8
     print-elapsed
     ;;
