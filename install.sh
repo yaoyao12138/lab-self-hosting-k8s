@@ -244,7 +244,7 @@ function install-nfs {
   info "Setting up nfs share..."
 
   echo "Create root NFS directory"
-  mkdir ${NFS_PATH}
+  mkdir -p ${NFS_PATH}
   chown nobody:nogroup ${NFS_PATH} # No-one is owner
   chmod 777 ${NFS_PATH}            # Everyone can modify files
 
