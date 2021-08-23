@@ -436,12 +436,10 @@ function setup-network {
   a2ensite instana-ssl
 
   a2enmod proxy
+  a2enmod proxy_http
   a2enmod ssl
 
-  # a2enmod proxy_http
-  # a2enmod headers
-
-  systemctl reload apache2
+  service apache2 restart
 
   info "Setting up Instana networking...OK"
 }
