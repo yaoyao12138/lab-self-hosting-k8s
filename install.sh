@@ -563,7 +563,7 @@ function clean-instana-db {
   )
 
   for db in ${db_layer[@]}; do
-    if ${DOCKER} inspect type=container $db  >/dev/null 2>&1; then
+    if ${DOCKER} container inspect $db >/dev/null 2>&1; then
       echo "Stopping container $db..."
       ${DOCKER} stop $db
       echo "Removing container $db..."

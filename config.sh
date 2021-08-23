@@ -22,7 +22,7 @@ INSTANA_HOST=${INSTANA_HOST:-$(hostname)}
 INSTANA_DB_HOST=${INSTANA_DB_HOST:-$(hostname)}
 # Your NFS hostname
 NFS_HOST=${NFS_HOST:-$INSTANA_DB_HOST}
-Additional images required for Instana installation
+# Additional images required for Instana installation
 REQUIRED_IMAGES=(
   containers.instana.io/instana/release/product/ingress:2.201.1115-0
 )
