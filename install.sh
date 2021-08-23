@@ -453,7 +453,17 @@ function pull-images {
   info "Pulling images..."
 
   instana images pull --key ${INSTANA_DOWNLOAD_KEY}
+
   echo
+  echo "Pulling additional images required for Instana installation..."
+
+  for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
+    echo "Pulling image: ${i}"
+    if echo "${i}" | grep ":master\s*$" >/dev/null || echo "${i}" | grep ":latest\s*$" >/dev/null || \
+      ! ${DOCKER} inspect --type=image "${i}" >/dev/null 2>&1; then
+      ${DOCKER} pull "${i}"
+    fi
+  done
 
   info "Pulling images...OK"
 }
@@ -468,10 +478,10 @@ function load-images {
     DOCKER=docker
   fi
 
-  local required_images=( $(instana images version) )
+  REQUIRED_IMAGES+=( $(instana images version) )
   local exclude_images="/zookeeper:|/clickhouse:|/nginx:|/cockroachdb:|/cassandra:|/elasticsearch:|/elasticsearch7:|/kafka:|/audit-logs-data-migrator:"
   local nodes="${KIND_CLUSTER_NAME}-worker,${KIND_CLUSTER_NAME}-worker2,${KIND_CLUSTER_NAME}-worker3"
-  for i in ${required_images[@]+"${required_images[@]}"}; do
+  for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
     if [[ ! ${i} =~ ${exclude_images} ]]; then
       echo "Loading image: ${i}"
       ${KIND} load docker-image --name="${KIND_CLUSTER_NAME}" --nodes=${nodes} ${i}
