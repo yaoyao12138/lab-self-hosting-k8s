@@ -436,11 +436,12 @@ function setup-network {
   a2ensite instana-ssl
 
   a2enmod proxy
-  a2enmod proxy_http
   a2enmod ssl
-  a2enmod headers
 
-  service apache2 restart
+  # a2enmod proxy_http
+  # a2enmod headers
+
+  systemctl reload apache2
 
   info "Setting up Instana networking...OK"
 }
@@ -456,6 +457,13 @@ function pull-images {
 
   echo
   echo "Pulling additional images required for Instana installation..."
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker not installed, exit."
+    exit 1
+  else
+    DOCKER=docker
+  fi
 
   for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
     echo "Pulling image: ${i}"
