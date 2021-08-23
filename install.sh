@@ -563,9 +563,17 @@ function clean-instana-db {
   )
 
   for db in ${db_layer[@]}; do
+    echo "Stopping container $db..."
     ${DOCKER} stop $db
+    echo "Removing container $db..."
     ${DOCKER} rm $db
   done
+
+  echo "Deleting db data..."
+  rm -r /mnt/metrics/* 2>/dev/null
+  rm -r /mnt/traces/* 2>/dev/null
+  rm -r /mnt/data/* 2>/dev/null
+  rm -r /mnt/log/* 2>/dev/null
 
   info "Cleaning Instana DB...OK"
 }
