@@ -623,6 +623,7 @@ case $1 in
     kind-up
     load-images
     install-nfs-provisioner
+    install-instana-console
     install-kubectl-instana-plugin
     generate-instana-license
     install-instana
