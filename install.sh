@@ -102,7 +102,7 @@ function install-apt-package {
   local pkg_ok=$(dpkg-query -W --showformat='${Status} [${Version}]\n' ${required_pkg} | grep "install ok installed")
   if [[ -z ${pkg_ok} ]]; then
     apt-get update
-    apt-get --yes install ${required_pkg}
+    apt-get --yes install ${arg}
   else
     if [[ -n ${pkg_version} ]]; then
       if [[ ! ${pkg_ok} =~ "[${pkg_version}]" ]]; then
