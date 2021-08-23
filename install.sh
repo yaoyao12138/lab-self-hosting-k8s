@@ -67,7 +67,7 @@ function wait-deployment {
   local object=$1
   local ns=$2
   echo -n "Waiting for deployment $object ready"
-  retries=100
+  retries=600
   until [[ $retries == 0 ]]; do
     echo -n "."
     local result=$(${KUBECTL} --kubeconfig ${KUBECONFIG} get deploy $object -n $ns -o jsonpath='{.status.readyReplicas}' 2>/dev/null)
