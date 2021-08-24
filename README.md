@@ -1,6 +1,6 @@
-# The Automated Instana Sandbox on KIND
+# The Opinionated Sandbox for Self-hosted Instana on Kubernetes
 
-This util helps you launch the self-hosted Instana for Kubernetes in a KIND cluster automatically which can be used for quick demo, PoC, or dev environment.
+This util helps you launch the self-hosted Instana for Kubernetes in a KIND cluster automatically which can be used for quick demo, PoC, or dev environment. Tested on Ubuntu.
 
 ## Overview
 
