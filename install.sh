@@ -49,44 +49,48 @@ function error {
 
 function wait-ns {
   local ns=$1
-  echo -n "Waiting for namespace $ns ready"
+  echo -n "Waiting for namespace $ns ready "
   retries=100
   until [[ $retries == 0 ]]; do
     echo -n "."
     local result=$(${KUBECTL} --kubeconfig ${KUBECONFIG} get ns $ns -o name 2>/dev/null)
     if [[ $result == "namespace/$ns" ]]; then
-      echo "done"
+      echo " Done"
       break
     fi
     sleep 1
     retries=$((retries - 1))
   done
+  [[ $retries == 0 ]] && echo
 }
 
 function wait-deployment {
   local object=$1
   local ns=$2
-  echo -n "Waiting for deployment $object ready"
+  echo -n "Waiting for deployment $object in $ns namespace ready "
   retries=600
   until [[ $retries == 0 ]]; do
     echo -n "."
     local result=$(${KUBECTL} --kubeconfig ${KUBECONFIG} get deploy $object -n $ns -o jsonpath='{.status.readyReplicas}' 2>/dev/null)
     if [[ $result == 1 ]]; then
-      echo "done"
+      echo " Done"
       break
     fi
     sleep 1
     retries=$((retries - 1))
   done
+  [[ $retries == 0 ]] && echo
 }
 
 function add-apt-source {
-  local source_list=$1
-  local source_item=$2
-  local apt_key=$3
+  local source_list="$1"
+  local source_item="$2"
+  local apt_key="$3"
+  local grep_text="${source_item/[/\\[}"
+  grep_text="${grep_text/]/\\]}"
   touch /etc/apt/sources.list.d/${source_list}
-  if ! cat /etc/apt/sources.list.d/${source_list} | grep -q ${source_item}; then
-    echo ${source_item} >> /etc/apt/sources.list.d/${source_list}
+  if ! cat /etc/apt/sources.list.d/${source_list} | grep -q "${grep_text}"; then
+    echo "${source_item}" >> /etc/apt/sources.list.d/${source_list}
     wget -qO - ${apt_key} | apt-key add -
   fi
 }
@@ -168,7 +172,7 @@ function preflight-check {
 KIND=${TOOLS_HOST_DIR}/kind-${KIND_VERSION}
 
 function install-kind {
-  info "Installing kind ${KIND_VERSION}..."
+  info "Installing kind ${KIND_VERSION} ..."
 
   if [[ ! -f ${KIND} ]]; then
     curl -fsSLo ${KIND} https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-${SAFEHOSTPLATFORM} || exit -1
@@ -177,7 +181,7 @@ function install-kind {
     echo "kind ${KIND_VERSION} detected."
   fi
 
-  info "Installing kind ${KIND_VERSION}...OK"
+  info "Installing kind ${KIND_VERSION} ... OK"
 }
 
 ####################
@@ -187,7 +191,7 @@ function install-kind {
 KUBECTL=${TOOLS_HOST_DIR}/kubectl-${KUBECTL_VERSION}
 
 function install-kubectl {
-  info "Installing kubectl ${KUBECTL_VERSION}..."
+  info "Installing kubectl ${KUBECTL_VERSION} ..."
 
   if [[ ! -f ${KUBECTL} ]]; then
     curl -fsSLo ${KUBECTL} https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/${HOSTOS}/${SAFEHOSTARCH}/kubectl || exit -1
@@ -196,7 +200,7 @@ function install-kubectl {
     echo "kubectl ${KUBECTL_VERSION} detected."
   fi
 
-  info "Installing kubectl ${KUBECTL_VERSION}...OK"
+  info "Installing kubectl ${KUBECTL_VERSION} ... OK"
 }
 
 ####################
@@ -207,7 +211,7 @@ HELM3=${TOOLS_HOST_DIR}/helm-${HELM3_VERSION}
 HELM=${HELM3}
 
 function install-helm {
-  info "Installing helm3 ${HELM3_VERSION}..."
+  info "Installing helm3 ${HELM3_VERSION} ..."
 
   if [[ ! -f ${HELM3} ]]; then
     mkdir -p ${TOOLS_HOST_DIR}/tmp-helm3
@@ -218,7 +222,7 @@ function install-helm {
     echo "helm3 ${HELM3_VERSION} detected."
   fi
 
-  info "Installing helm3 ${HELM3_VERSION}...OK"
+  info "Installing helm3 ${HELM3_VERSION} ... OK"
 }
 
 ####################
@@ -231,7 +235,7 @@ KIND_CLUSTER_NAME=instana-demo
 KUBECONFIG=${HOME}/.kube/config
 
 function kind-up {
-  info "kind up..."
+  info "kind up ..."
 
   if [[ $1 == --reg ]]; then
     KIND_CONFIG_FILE=${ROOT_DIR}/kind-reg.yaml
@@ -263,15 +267,15 @@ EOF
     docker network connect "kind" "${REG_NAME}" || true
   fi
 
-  info "kind up...OK"
+  info "kind up ... OK"
 }
 
 function kind-down {
-  info "kind down..."
+  info "kind down ..."
 
   ${KIND} delete cluster --name=${KIND_CLUSTER_NAME}
 
-  info "kind down...OK"
+  info "kind down ... OK"
 }
 
 ####################
@@ -281,13 +285,13 @@ function kind-down {
 NFS_PATH="/mnt/nfs_share"
 
 function install-nfs {
-  info "Installing nfs-kernel-server..."
+  info "Installing nfs-kernel-server ..."
 
   install-apt-package "nfs-kernel-server"
 
-  info "Installing nfs-kernel-server...OK"
+  info "Installing nfs-kernel-server ... OK"
 
-  info "Setting up nfs share..."
+  info "Setting up nfs share ..."
 
   echo "Create root NFS directory"
   mkdir -p ${NFS_PATH}
@@ -303,7 +307,7 @@ function install-nfs {
     systemctl restart nfs-kernel-server # Restarting the NFS kernel
   fi
 
-  info "Setting up nfs share...OK"
+  info "Setting up nfs share ... OK"
 }
 
 ####################
@@ -311,7 +315,7 @@ function install-nfs {
 ####################
 
 function install-instana-console {
-  info "Installing Instana console ${INSTANA_VERSION}..."
+  info "Installing Instana console ${INSTANA_VERSION} ..."
 
   add-apt-source "instana-product.list" \
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
@@ -319,7 +323,7 @@ function install-instana-console {
 
   install-apt-package "instana-console" ${INSTANA_VERSION}
 
-  info "Installing Instana console ${INSTANA_VERSION}...OK"
+  info "Installing Instana console ${INSTANA_VERSION} ... OK"
 }
 
 ####################
@@ -327,21 +331,21 @@ function install-instana-console {
 ####################
 
 function install-instana-db {
-  info "Installing Instana DB ${INSTANA_VERSION}..."
+  info "Installing Instana DB ${INSTANA_VERSION} ..."
 
   mkdir -p /mnt/metrics     # cassandra data dir
   mkdir -p /mnt/traces      # clickhouse data dir
   mkdir -p /mnt/data        # elastic, cockroachdb and kafka data dir
   mkdir -p /mnt/log         # log dir for db's
 
-  echo "Installing Instana DB using the provided settings..."
+  echo "Installing Instana DB using the provided settings ..."
   cat ${ROOT_DIR}/conf/settings-db.hcl.tpl | \
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_DB_HOST|${INSTANA_DB_HOST}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl
 
   instana datastores init --file ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl --force
 
-  info "Installing Instana DB ${INSTANA_VERSION}...OK"
+  info "Installing Instana DB ${INSTANA_VERSION} ... OK"
 }
 
 ####################
@@ -349,7 +353,7 @@ function install-instana-db {
 ####################
 
 function install-nfs-provisioner {
-  info "Installing NFS provisioner..."
+  info "Installing NFS provisioner ..."
 
   local helm_repository_name="nfs-subdir-external-provisioner"
   local helm_repository_url="https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner"
@@ -362,7 +366,7 @@ function install-nfs-provisioner {
     ${helm_release_name} ${helm_release_namespace} ${helm_chart_name} \
     --set nfs.server=${NFS_HOST} --set nfs.path=${NFS_PATH}
 
-  info "Installing NFS provisioner...OK"
+  info "Installing NFS provisioner ... OK"
 }
 
 ####################
@@ -370,7 +374,7 @@ function install-nfs-provisioner {
 ####################
 
 function install-kubectl-instana-plugin {
-  info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION}..."
+  info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION} ..."
 
   add-apt-source "instana-product.list" \
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
@@ -378,7 +382,7 @@ function install-kubectl-instana-plugin {
 
   install-apt-package "instana-kubectl" ${INSTANA_KUBECTL_PLUGIN_VERSION}
 
-  info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION}...OK"
+  info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION} ... OK"
 }
 
 ####################
@@ -386,7 +390,7 @@ function install-kubectl-instana-plugin {
 ####################
 
 function generate-instana-license {
-  info "Generating Instana license..."
+  info "Generating Instana license ..."
 
   instana license download --key=${INSTANA_SALES_KEY}
 
@@ -400,7 +404,7 @@ function generate-instana-license {
     rm -f license 
   fi
 
-  info "Generating Instana license...OK"
+  info "Generating Instana license ... OK"
 }
 
 ####################
@@ -408,23 +412,23 @@ function generate-instana-license {
 ####################
 
 function install-instana {
-  info "Installing Instana ${INSTANA_VERSION}..."
+  info "Installing Instana ${INSTANA_VERSION} ..."
 
-  echo "Creating self-signed certificate..."
+  echo "Creating self-signed certificate ..."
   if [[ ! -f ${DEPLOY_LOCAL_WORKDIR}/tls.key || ! -f ${DEPLOY_LOCAL_WORKDIR}/tls.crt ]]; then
     openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=*.${INSTANA_HOST}"
   else
     echo "Self-signed certificate detected"
   fi
 
-  echo "Generating dhparams..."
+  echo "Generating dhparams ..."
   if [[ ! -f ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem ]]; then
     openssl dhparam -out ${DEPLOY_LOCAL_WORKDIR}/dhparams.pem 1024
   else
     echo "dhparams detected"
   fi
 
-  echo "Applying Instana using the provided settings..."
+  echo "Applying Instana using the provided settings ..."
   INSTANA_DB_HOSTIP="$(host ${INSTANA_DB_HOST} | awk '/has.*address/{print $NF; exit}')"
   INSTANA_LICENSE=${DEPLOY_LOCAL_WORKDIR}/license
   INSTANA_SETTINGS=${ROOT_DIR}/conf/settings.hcl.tpl
@@ -443,7 +447,7 @@ function install-instana {
 
   wait-ns instana-core
 
-  echo "Creating persistent volume claim..."
+  echo "Creating persistent volume claim ..."
   cat << EOF | ${KUBECTL} --kubeconfig ${KUBECONFIG} apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -463,7 +467,7 @@ EOF
   wait-deployment ingress-core instana-core
   wait-deployment ingress instana-units
 
-  info "Installing Instana ${INSTANA_VERSION}...OK"
+  info "Installing Instana ${INSTANA_VERSION} ... OK"
 }
 
 ####################
@@ -471,15 +475,15 @@ EOF
 ####################
 
 function setup-network {
-  info "Setting up Instana networking..."
+  info "Setting up Instana networking ..."
 
-  echo "Exposing Instana networking..."
+  echo "Exposing Instana networking ..."
   ${KUBECTL} --kubeconfig ${KUBECONFIG} apply -f ${ROOT_DIR}/conf/networking.yaml
   
-  echo "Installing apache..."
+  echo "Installing apache ..."
   install-apt-package "apache2"
 
-  echo "Configuring apache for Instana..."
+  echo "Configuring apache for Instana ..."
   cat ${ROOT_DIR}/conf/instana-ssl.conf.tpl | \
     sed -e "s|@@INSTANA_HOST|${INSTANA_HOST}|g; \
       s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > /etc/apache2/sites-available/instana-ssl.conf
@@ -491,7 +495,7 @@ function setup-network {
 
   service apache2 restart
 
-  info "Setting up Instana networking...OK"
+  info "Setting up Instana networking ... OK"
 }
 
 ####################
@@ -499,12 +503,12 @@ function setup-network {
 ####################
 
 function pull-images {
-  info "Pulling images..."
+  info "Pulling images ..."
 
   instana images pull --key ${INSTANA_DOWNLOAD_KEY}
 
   echo
-  echo "Pulling additional images required for Instana installation..."
+  echo "Pulling additional images required for Instana installation ..."
 
   for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
     echo "Pulling image: ${i}"
@@ -514,16 +518,16 @@ function pull-images {
     fi
   done
 
-  info "Pulling images...OK"
+  info "Pulling images ... OK"
 }
 
 REG_NAME='kind-registry'
 REG_PORT='5000'
 
 function setup-registry {
-  info "Setting up registry..."
+  info "Setting up registry ..."
 
-  echo "Creating registry container unless it already exists..."
+  echo "Creating registry container unless it already exists ..."
   running="$(docker inspect -f '{{.State.Running}}' "${REG_NAME}" 2>/dev/null || true)"
   if [ "${running}" != 'true' ]; then
     docker run \
@@ -543,7 +547,7 @@ function setup-registry {
     # docker rmi $target_image
   done
 
-  info "Setting up registry...OK"
+  info "Setting up registry ... OK"
 }
 
 ####################
@@ -594,7 +598,7 @@ function print-elapsed {
 ####################
 
 function clean-instana-db {
-  info "Cleaning Instana DB..."
+  info "Cleaning Instana DB ..."
 
   local db_layer=(
     instana-cockroachdb
@@ -607,20 +611,20 @@ function clean-instana-db {
 
   for db in ${db_layer[@]}; do
     if docker container inspect $db >/dev/null 2>&1; then
-      echo "Stopping container $db..."
+      echo "Stopping container $db ..."
       docker stop $db
-      echo "Removing container $db..."
+      echo "Removing container $db ..."
       docker rm $db
     fi
   done
 
-  echo "Deleting db data..."
+  echo "Deleting db data ..."
   rm -r /mnt/metrics/* 2>/dev/null
   rm -r /mnt/traces/* 2>/dev/null
   rm -r /mnt/data/* 2>/dev/null
   rm -r /mnt/log/* 2>/dev/null
 
-  info "Cleaning Instana DB...OK"
+  info "Cleaning Instana DB ... OK"
 }
 
 ####################
@@ -631,26 +635,26 @@ function print-help {
   cat << EOF
 The Opinionated Sandbox for Self-hosted Instana on Kubernetes
 
-By using this script, you can install Single-hosted Instana Database Layer on one
-machine and Self-hosted Instana on Kubernetes on a KIND cluster running on another
-machine.
+Help you install the single-hosted Instana database layer on one machine and the
+self-hosted Instana for Kubernetes in a KIND cluster on another machine.
 
-Usage Examples:
+Usage: $0 [up|down] [db|nfs|reg|k8] [flags]
 
-# Bring up single-hosted Instana database layer on your machine
-$0 up db
-# Bring up NFS service on your machine
-$0 up nfs
-# Bring up a local registry on your machine
-$0 up reg
-# Bring up self-hosted Instana for Kubernetes on a KIND cluster on your machine
-$0 up k8
-# Bring up self-hosted Instana for Kubernetes on a KIND cluster on your machine and use local registry
-$0 up k8 --reg
-# Take down single-hosted Instana database layer on your machine
-$0 down db
-# Take down self-hosted Instana for Kubernetes on your machine
-$0 down k8
+Examples:
+  # Bring up single-hosted Instana database layer on your machine
+  $0 up db
+  # Bring up NFS service on your machine
+  $0 up nfs
+  # Bring up a local registry on your machine
+  $0 up reg
+  # Bring up self-hosted Instana for Kubernetes on a KIND cluster on your machine
+  $0 up k8
+  # Bring up self-hosted Instana for Kubernetes on a KIND cluster on your machine and use local registry
+  $0 up k8 --reg
+  # Take down single-hosted Instana database layer on your machine
+  $0 down db
+  # Take down self-hosted Instana for Kubernetes on your machine
+  $0 down k8
 EOF
 }
 
