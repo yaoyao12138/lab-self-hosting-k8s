@@ -313,7 +313,7 @@ function install-nfs {
 function install-instana-console {
   info "Installing Instana console ${INSTANA_VERSION}..."
 
-  add-apt-source "instana-product.list" "https://self-hosted.instana.io/apt" \
+  add-apt-source "instana-product.list" \
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
@@ -372,7 +372,7 @@ function install-nfs-provisioner {
 function install-kubectl-instana-plugin {
   info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION}..."
 
-  add-apt-source "instana-product.list" "https://self-hosted.instana.io/apt" \
+  add-apt-source "instana-product.list" \
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
