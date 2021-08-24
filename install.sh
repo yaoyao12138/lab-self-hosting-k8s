@@ -141,6 +141,27 @@ function install-helm-release {
 }
 
 ####################
+# Preflight check
+####################
+
+function preflight-check {
+  if ! command -v docker >/dev/null 2>&1; then
+    error "docker not installed, exit."
+    exit 1
+  fi
+
+  if [[ -z $INSTANA_DOWNLOAD_KEY ]]; then
+    error "INSTANA_DOWNLOAD_KEY must not be empty, exit."
+    exit 1
+  fi
+
+  if [[ -z $INSTANA_SALES_KEY ]]; then
+    error "INSTANA_SALES_KEY must not be empty, exit."
+    exit 1
+  fi
+}
+
+####################
 # Install kind
 ####################
 
@@ -206,16 +227,41 @@ function install-helm {
 
 # The cluster information
 DEPLOY_LOCAL_KUBECONFIG=${DEPLOY_LOCAL_WORKDIR}/kubeconfig
-KIND_CONFIG_FILE=${ROOT_DIR}/kind.yaml
 KIND_CLUSTER_NAME=instana-demo
 KUBECONFIG=${HOME}/.kube/config
 
 function kind-up {
   info "kind up..."
 
+  if [[ $1 == --reg ]]; then
+    KIND_CONFIG_FILE=${ROOT_DIR}/kind-reg.yaml
+  else
+    KIND_CONFIG_FILE=${ROOT_DIR}/kind.yaml
+  fi
+
   ${KIND} get kubeconfig --name ${KIND_CLUSTER_NAME} >/dev/null 2>&1 || ${KIND} create cluster --name=${KIND_CLUSTER_NAME} --kubeconfig="${KUBECONFIG}" --config="${KIND_CONFIG_FILE}"
   ${KIND} get kubeconfig --name ${KIND_CLUSTER_NAME} > ${DEPLOY_LOCAL_KUBECONFIG}
   ${KUBECTL} --kubeconfig ${KUBECONFIG} config use-context kind-${KIND_CLUSTER_NAME}
+
+  if [[ $1 == --reg ]]; then
+    # Document the local registry
+    wait-ns kube-public
+
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: "localhost:${REG_PORT}"
+    help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
+EOF
+
+    # Connect the registry to the cluster network
+    docker network connect "kind" "${REG_NAME}" || true
+  fi
 
   info "kind up...OK"
 }
@@ -381,7 +427,11 @@ function install-instana {
   echo "Applying Instana using the provided settings..."
   INSTANA_DB_HOSTIP="$(host ${INSTANA_DB_HOST} | awk '/has.*address/{print $NF; exit}')"
   INSTANA_LICENSE=${DEPLOY_LOCAL_WORKDIR}/license
-  cat ${ROOT_DIR}/conf/settings.hcl.tpl | \
+  INSTANA_SETTINGS=${ROOT_DIR}/conf/settings.hcl.tpl
+  if [[ $1 == --reg ]]; then
+    INSTANA_SETTINGS=${ROOT_DIR}/conf/settings-reg.hcl.tpl
+  fi
+  cat ${INSTANA_SETTINGS} | \
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_SALES_KEY|${INSTANA_SALES_KEY}|g; \
       s|@@INSTANA_LICENSE|${INSTANA_LICENSE}|g; \
@@ -456,45 +506,44 @@ function pull-images {
   echo
   echo "Pulling additional images required for Instana installation..."
 
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "docker not installed, exit."
-    exit 1
-  else
-    DOCKER=docker
-  fi
-
   for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
     echo "Pulling image: ${i}"
     if echo "${i}" | grep ":master\s*$" >/dev/null || echo "${i}" | grep ":latest\s*$" >/dev/null || \
-      ! ${DOCKER} inspect --type=image "${i}" >/dev/null 2>&1; then
-      ${DOCKER} pull "${i}"
+      ! docker inspect --type=image "${i}" >/dev/null 2>&1; then
+      docker pull "${i}"
     fi
   done
 
   info "Pulling images...OK"
 }
 
-function load-images {
-  info "Loading images..."
+REG_NAME='kind-registry'
+REG_PORT='5000'
 
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "docker not installed, exit."
-    exit 1
-  else
-    DOCKER=docker
+function setup-registry {
+  info "Setting up registry..."
+
+  echo "Creating registry container unless it already exists..."
+  running="$(docker inspect -f '{{.State.Running}}' "${REG_NAME}" 2>/dev/null || true)"
+  if [ "${running}" != 'true' ]; then
+    docker run \
+      -d --restart=always -p "127.0.0.1:${REG_PORT}:5000" --name "${REG_NAME}" \
+      registry:2
   fi
 
   REQUIRED_IMAGES+=( $(instana images version) )
-  local exclude_images="/zookeeper:|/clickhouse:|/nginx:|/cockroachdb:|/cassandra:|/elasticsearch:|/elasticsearch7:|/kafka:|/audit-logs-data-migrator:"
-  local nodes="${KIND_CLUSTER_NAME}-worker,${KIND_CLUSTER_NAME}-worker2,${KIND_CLUSTER_NAME}-worker3"
-  for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
-    if [[ ! ${i} =~ ${exclude_images} ]]; then
-      echo "Loading image: ${i}"
-      ${KIND} load docker-image --name="${KIND_CLUSTER_NAME}" --nodes=${nodes} ${i}
-    fi
+  for image in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
+    local registry=${image%%/*}
+    local repository=${image#*/}
+    local target_image="localhost:5000/${repository}"
+
+    echo "${image} ➞ ${target_image}"
+    docker tag $image $target_image
+    docker push $target_image
+    # docker rmi $target_image
   done
 
-  info "Loading images...OK"
+  info "Setting up registry...OK"
 }
 
 ####################
@@ -506,7 +555,6 @@ function print-summary-db {
 
 👏 Congratulations! The Single-hosted Instana Database Layer is available!
 It installed following tools and applitions:
-- NFS service
 - Single-hosted Instana Database Layer (Build ${INSTANA_VERSION})
 - The command-line tool instana-console (Build ${INSTANA_VERSION})
 
@@ -521,10 +569,12 @@ It launched a kind cluster, installed following tools and applitions:
 - kind ${KIND_VERSION}
 - kubectl ${KUBECTL_VERSION}
 - helm ${HELM3_VERSION}
-- NFS provisioner
 - The kubectl plugin instana (Build ${INSTANA_KUBECTL_PLUGIN_VERSION})
 - Self-hosted Instana on Kubernetes (Build ${INSTANA_VERSION})
-- Apache
+
+To access Instana UI, open https://${INSTANA_HOST} in browser.
+- username: admin@instana.local
+- password: passw0rd
 
 For tools you want to run anywhere, create links in a directory defined in your PATH, e.g:
 ln -s -f ${KUBECTL} /usr/local/bin/kubectl
@@ -546,13 +596,6 @@ function print-elapsed {
 function clean-instana-db {
   info "Cleaning Instana DB..."
 
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "docker not installed, exit."
-    exit 1
-  else
-    DOCKER=docker
-  fi
-
   local db_layer=(
     instana-cockroachdb
     instana-elastic
@@ -563,11 +606,11 @@ function clean-instana-db {
   )
 
   for db in ${db_layer[@]}; do
-    if ${DOCKER} container inspect $db >/dev/null 2>&1; then
+    if docker container inspect $db >/dev/null 2>&1; then
       echo "Stopping container $db..."
-      ${DOCKER} stop $db
+      docker stop $db
       echo "Removing container $db..."
-      ${DOCKER} rm $db
+      docker rm $db
     fi
   done
 
@@ -594,14 +637,20 @@ machine.
 
 Usage Examples:
 
-# Install Single-hosted Instana Database Layer
-$0 db
-# Install Self-hosted Instana on Kubernetes on KIND cluster
-$0 k8
-# Clean Single-hosted Instana Database Layer installation
-$0 clean-db
-# Clean Self-hosted Instana on Kubernetes
-$0 clean-k8
+# Bring up single-hosted Instana database layer on your machine
+$0 up db
+# Bring up NFS service on your machine
+$0 up nfs
+# Bring up a local registry on your machine
+$0 up reg
+# Bring up self-hosted Instana for Kubernetes on a KIND cluster on your machine
+$0 up k8
+# Bring up self-hosted Instana for Kubernetes on a KIND cluster on your machine and use local registry
+$0 up k8 --reg
+# Take down single-hosted Instana database layer on your machine
+$0 down db
+# Take down self-hosted Instana for Kubernetes on your machine
+$0 down k8
 EOF
 }
 
@@ -611,40 +660,64 @@ EOF
 
 start_time=$SECONDS
 
-case $1 in
-  "db")
-    install-nfs
-    install-instana-console
-    install-instana-db
-    print-summary-db
-    print-elapsed
+action=$1; shift
+target=$1; shift
+
+case $action in
+  "up")
+    case $target in
+      "db")
+        preflight-check
+        install-instana-console
+        install-instana-db
+        print-summary-db
+        print-elapsed
+        ;;
+      "nfs")
+        install-nfs
+        ;;
+      "reg")
+        preflight-check
+        install-instana-console
+        pull-images
+        setup-registry
+        print-elapsed
+        ;;
+      "k8")
+        preflight-check
+        install-kind
+        install-kubectl
+        install-helm
+        kind-up $@
+        install-nfs-provisioner
+        install-instana-console
+        install-kubectl-instana-plugin
+        generate-instana-license
+        install-instana $@
+        setup-network
+        print-summary-k8
+        print-elapsed
+        ;;
+      *)
+        print-help
+        ;;
+    esac
     ;;
-  "pull-images")
-    install-instana-console
-    pull-images
-    print-elapsed
-    ;;
-  "k8")
-    install-kind
-    install-kubectl
-    install-helm
-    kind-up
-    load-images
-    install-nfs-provisioner
-    install-instana-console
-    install-kubectl-instana-plugin
-    generate-instana-license
-    install-instana
-    setup-network
-    print-summary-k8
-    print-elapsed
-    ;;
-  "clean-db")
-    clean-instana-db
-    ;;
-  "clean-k8")
-    install-kind
-    kind-down
+  "down")
+    case $target in
+      "db")
+        preflight-check
+        clean-instana-db
+        ;;
+      "k8")
+        preflight-check
+        install-kind
+        kind-down
+        ;;
+      *)
+        print-help
+        ;;
+    esac
     ;;
   *)
     print-help
