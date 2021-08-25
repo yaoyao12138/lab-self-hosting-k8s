@@ -31,6 +31,8 @@ On the machine that runs KIND cluster and Instana workloads, please also define 
 export INSTANA_DB_HOST="the hostname for the machine that runs Instana databases, e.g. machine1"
 ```
 
+Please note here is the hostname, not the IP address. The util will auto-resolve the IP address for the specified hostname as needed.
+
 You can also modify `./config.sh` for more settings customization.
 
 ### Bring up environment
