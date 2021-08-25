@@ -510,6 +510,8 @@ function pull-images {
   echo
   echo "Pulling additional images required for Instana installation ..."
 
+  docker login containers.instana.io -u _ -p $INSTANA_DOWNLOAD_KEY 2>/dev/null
+
   for i in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
     echo "Pulling image: ${i}"
     if echo "${i}" | grep ":master\s*$" >/dev/null || echo "${i}" | grep ":latest\s*$" >/dev/null || \
