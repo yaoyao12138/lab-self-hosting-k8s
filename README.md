@@ -14,6 +14,8 @@ Typically, you need two Ubuntu VMs:
 * Use machine1 to install Instana databases and NFS service (for tracing spans persistence).
 * Use machine2 to install KIND cluster and Instana workloads run on it.
 
+![w](architecture.png)
+
 ## How to run?
 
 Clone this Git repository to each of your above machines first, then run the `install.sh` to start the installation.
