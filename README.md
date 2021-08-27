@@ -31,6 +31,7 @@ On the machine that runs KIND cluster and Instana workloads, please also define 
 
 ```console
 export INSTANA_DB_HOST="the hostname for the machine that runs Instana databases, e.g. machine1"
+export INSTANA_FQDN="the Fully Qualified Domain Names (FQDN) for all ingress into instana backend"
 ```
 
 Please note here is the hostname, not the IP address. The util will auto-resolve the IP address for the specified hostname as needed.
@@ -68,6 +69,13 @@ To use the local registry, add `--reg` when bring up KIND and Instana workloads 
 ./install.sh up k8 --reg
 ```
 
+### Setup instana agent for selfmonitoring
+
+To self monitor this box on the instana installation. Just roll out the instana agent with this command.
+```console
+./install.sh up agent
+```
+
 ### Clean up
 
 To take down Instana databases on your machine:
@@ -84,6 +92,6 @@ To take down KIND and Instana workloads on your machine:
 
 ## How to access?
 
-After Instana is launched, to access Instana UI, open https://${INSTANA_HOST} in browser, username: admin@instana.local, password: passw0rd.
+After Instana is launched, to access Instana UI, open https://${INSTANA_FQDN} in browser, username: admin@instana.local, password: passw0rd.
 
-Here $INSTANA_HOST is the hostname for the machine that runs KIND and Instana workloads.
+Here $INSTANA_FQDN is the hostname for the machine that runs KIND and Instana workloads.
