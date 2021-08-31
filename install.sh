@@ -195,9 +195,8 @@ function install-java {
   info "Installing java ${JAVA_VERSION} ..."
 
   if [[ ! -f ${JAVA} ]]; then
-    curl -fsSLo ${JAVA} https://download.java.net/java/ga/jdk${JAVA_VERSION}/openjdk-${JAVA_VERSION}_${SAFEHOSTPLATFORM}_bin.tar.gz | tar -xz
-    export JAVA_HOME=${JAVA}
-    export PATH=$PATH:${JAVA}/bin
+    info "https://download.java.net/java/ga/jdk${JAVA_VERSION}/openjdk-${JAVA_VERSION}_linux-x64_bin.tar.gz"
+    curl https://download.java.net/java/ga/jdk11/openjdk-11_linux-x64_bin.tar.gz | tar -xz -C ${TOOLS_HOST_DIR}   
   else
     echo "java ${JAVA_VERSION} detected."
   fi
@@ -514,8 +513,8 @@ function pull-images {
 
   echo
   echo "Pulling additional operator images ..."
-  
-  REQUIRED_IMAGES+=( ${KUBECTL} instana images )
+ 
+  REQUIRED_IMAGES+=( `${KUBECTL} instana images` ) 
 
   docker login containers.instana.io -u _ -p $INSTANA_DOWNLOAD_KEY 2>/dev/null
 
@@ -599,9 +598,9 @@ EOF
 }
 
 function install-agent {
+  AGENT=${TOOLS_HOST_DIR}/setup_agent.sh
   info "Installing instana agent ..."
-
-  curl -o setup_agent.sh https://setup.instana.io/agent && chmod 700 ./setup_agent.sh && sudo ./setup_agent.sh -a ${INSTANA_DOWNLOAD_KEY} -t dynamic -e ${INSTANA_FQDN}:443 -y -s
+  curl -o ${AGENT} https://setup.instana.io/agent && chmod 700 ${AGENT} && sudo JAVA_HOME=${JAVA} ${AGENT} -a ${INSTANA_DOWNLOAD_KEY} -t dynamic -e ${INSTANA_FQDN}:443 -y -s
 
   info "Installing instana agent ... OK"
 }
@@ -721,7 +720,7 @@ case $action in
         print-elapsed
         ;;
       "agent")
-        install-jre
+        install-java
         install-agent
         ;;
       *)
