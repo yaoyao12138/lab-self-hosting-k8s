@@ -510,7 +510,7 @@ function setup-network {
 function pull-images {
   info "Pulling images ..."
   
-  instana databases images pull --key ${INSTANA_DOWNLOAD_KEY}
+  instana datastores images pull --key ${INSTANA_DOWNLOAD_KEY}
 
   echo
   echo "Pulling additional operator images ..."
