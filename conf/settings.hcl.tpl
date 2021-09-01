@@ -1,7 +1,7 @@
 admin_password = "passw0rd"                        # The initial password the administrator will receive
 download_key = "@@INSTANA_DOWNLOAD_KEY"            # Provided by instana
 sales_key = "@@INSTANA_SALES_KEY"                  # This identifies you as our customer and is required to activate your license
-base_domain = "@@INSTANA_HOST"                     # The domain under which instana will be reachable
+base_domain = "@@INSTANA_FQDN"                     # The domain under which instana will be reachable
 core_name = "instana-core"                         # A name identifiying the Core CRD created by the operator. This needs to be unique if you have more than one instana installation running
 tls_crt_path = "@@DEPLOY_LOCAL_WORKDIR/tls.crt"    # Path to the certificate to be used for the HTTPS endpoints of instana
 tls_key_path = "@@DEPLOY_LOCAL_WORKDIR/tls.key"    # Path to the key to be used for the HTTPS endpoints of instana
@@ -34,12 +34,13 @@ databases "zookeeper"{
 profile = "small"                                  # Specify the memory/cpu-profile to be used for components
 spans_location {                                   # Spans can be stored in either s3 or on disk, this is an s3 example
     persistent_volume {                            # Use a persistent volume for raw-spans persistence 
-        volume_name = "raw-spans"                  # Name of the persisten volume to be used 
-        storage_class = "nfs-client"               # Storage class to be used 
+        storage_class = "nfs-client" 
+        volume_name=""
+              # Storage class to be used 
     } 
 }
 ingress "agent-ingress" {                          # This block defines the public reachable name where the agents will connect 
-    hostname = "@@INSTANA_HOST"
+    hostname = "@@INSTANA_FQDN"
     port     = 8600
 }
 units "prod" {                                     # This block defines a tenant unit named prod associated with the tenant instana

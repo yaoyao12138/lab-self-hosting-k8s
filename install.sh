@@ -184,6 +184,26 @@ function install-kind {
   info "Installing kind ${KIND_VERSION} ... OK"
 }
 
+
+####################
+# Install java
+####################
+
+JAVA=${TOOLS_HOST_DIR}/jdk-${JAVA_VERSION}
+
+function install-java {
+  info "Installing java ${JAVA_VERSION} ..."
+
+  if [[ ! -f ${JAVA} ]]; then
+    info "https://download.java.net/java/ga/jdk${JAVA_VERSION}/openjdk-${JAVA_VERSION}_linux-x64_bin.tar.gz"
+    curl https://download.java.net/java/ga/jdk11/openjdk-11_linux-x64_bin.tar.gz | tar -xz -C ${TOOLS_HOST_DIR}   
+  else
+    echo "java ${JAVA_VERSION} detected."
+  fi
+
+  info "Installing java ${JAVA_VERSION} ... OK"
+}
+
 ####################
 # Install kubectl
 ####################
@@ -315,15 +335,15 @@ function install-nfs {
 ####################
 
 function install-instana-console {
-  info "Installing Instana console ${INSTANA_VERSION} ..."
+  info "Installing Instana console ${INSTANA_CONSOLE_VERSION} ..."
 
   add-apt-source "instana-product.list" \
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
-  install-apt-package "instana-console" ${INSTANA_VERSION}
+  install-apt-package "instana-console" ${INSTANA_CONSOLE_VERSION}
 
-  info "Installing Instana console ${INSTANA_VERSION} ... OK"
+  info "Installing Instana console ${INSTANA_CONSOLE_VERSION} ... OK"
 }
 
 ####################
@@ -331,7 +351,7 @@ function install-instana-console {
 ####################
 
 function install-instana-db {
-  info "Installing Instana DB ${INSTANA_VERSION} ..."
+  info "Installing Instana DB ${INSTANA_CONSOLE_VERSION} ..."
 
   mkdir -p /mnt/metrics     # cassandra data dir
   mkdir -p /mnt/traces      # clickhouse data dir
@@ -345,7 +365,7 @@ function install-instana-db {
 
   instana datastores init --file ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl --force
 
-  info "Installing Instana DB ${INSTANA_VERSION} ... OK"
+  info "Installing Instana DB ${INSTANA_CONSOLE_VERSION} ... OK"
 }
 
 ####################
@@ -416,7 +436,7 @@ function install-instana {
 
   echo "Creating self-signed certificate ..."
   if [[ ! -f ${DEPLOY_LOCAL_WORKDIR}/tls.key || ! -f ${DEPLOY_LOCAL_WORKDIR}/tls.crt ]]; then
-    openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=*.${INSTANA_HOST}"
+    openssl req -x509 -newkey rsa:2048 -keyout ${DEPLOY_LOCAL_WORKDIR}/tls.key -out ${DEPLOY_LOCAL_WORKDIR}/tls.crt -days 365 -nodes -subj "/CN=*.${INSTANA_FQDN}"
   else
     echo "Self-signed certificate detected"
   fi
@@ -439,29 +459,13 @@ function install-instana {
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_SALES_KEY|${INSTANA_SALES_KEY}|g; \
       s|@@INSTANA_LICENSE|${INSTANA_LICENSE}|g; \
-      s|@@INSTANA_HOST|${INSTANA_HOST}|g; \
+      s|@@INSTANA_FQDN|${INSTANA_FQDN}|g; \
       s|@@INSTANA_DB_HOSTIP|${INSTANA_DB_HOSTIP}|g; \
       s|@@ROOT_DIR|${ROOT_DIR}|g; \
       s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
   ${KUBECTL} instana apply --yes --settings-file ${DEPLOY_LOCAL_WORKDIR}/settings.hcl
 
   wait-ns instana-core
-
-  echo "Creating persistent volume claim ..."
-  cat << EOF | ${KUBECTL} --kubeconfig ${KUBECONFIG} apply -f -
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: spans-volume-claim
-  namespace: instana-core
-spec:
-  storageClassName: nfs-client
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-EOF
 
   wait-deployment acceptor instana-core
   wait-deployment ingress-core instana-core
@@ -485,7 +489,7 @@ function setup-network {
 
   echo "Configuring apache for Instana ..."
   cat ${ROOT_DIR}/conf/instana-ssl.conf.tpl | \
-    sed -e "s|@@INSTANA_HOST|${INSTANA_HOST}|g; \
+    sed -e "s|@@INSTANA_FQDN|${INSTANA_FQDN}|g; \
       s|@@DEPLOY_LOCAL_WORKDIR|${DEPLOY_LOCAL_WORKDIR}|g;" > /etc/apache2/sites-available/instana-ssl.conf
   a2ensite instana-ssl
 
@@ -504,11 +508,13 @@ function setup-network {
 
 function pull-images {
   info "Pulling images ..."
-
-  instana images pull --key ${INSTANA_DOWNLOAD_KEY}
+  
+  instana datastores images pull --key ${INSTANA_DOWNLOAD_KEY}
 
   echo
-  echo "Pulling additional images required for Instana installation ..."
+  echo "Pulling additional operator images ..."
+ 
+  REQUIRED_IMAGES+=( `${KUBECTL} instana images` ) 
 
   docker login containers.instana.io -u _ -p $INSTANA_DOWNLOAD_KEY 2>/dev/null
 
@@ -538,6 +544,7 @@ function setup-registry {
   fi
 
   REQUIRED_IMAGES+=( $(instana images version) )
+
   for image in ${REQUIRED_IMAGES[@]+"${REQUIRED_IMAGES[@]}"}; do
     local registry=${image%%/*}
     local repository=${image#*/}
@@ -561,8 +568,8 @@ function print-summary-db {
 
 👏 Congratulations! The Single-hosted Instana Database Layer is available!
 It installed following tools and applitions:
-- Single-hosted Instana Database Layer (Build ${INSTANA_VERSION})
-- The command-line tool instana-console (Build ${INSTANA_VERSION})
+- Single-hosted Instana Database Layer (Build ${INSTANA_CONSOLE_VERSION})
+- The command-line tool instana-console (Build ${INSTANA_CONSOLE_VERSION})
 
 EOF
 }
@@ -578,7 +585,7 @@ It launched a kind cluster, installed following tools and applitions:
 - The kubectl plugin instana (Build ${INSTANA_KUBECTL_PLUGIN_VERSION})
 - Self-hosted Instana on Kubernetes (Build ${INSTANA_VERSION})
 
-To access Instana UI, open https://${INSTANA_HOST} in browser.
+To access Instana UI, open https://${INSTANA_FQDN} in browser.
 - username: admin@instana.local
 - password: passw0rd
 
@@ -588,6 +595,14 @@ ln -s -f ${KIND} /usr/local/bin/kind
 ln -s -f ${HELM} /usr/local/bin/helm
 
 EOF
+}
+
+function install-agent {
+  AGENT=${TOOLS_HOST_DIR}/setup_agent.sh
+  info "Installing instana agent ..."
+  curl -o ${AGENT} https://setup.instana.io/agent && chmod 700 ${AGENT} && sudo JAVA_HOME=${JAVA} ${AGENT} -a ${INSTANA_DOWNLOAD_KEY} -t dynamic -e ${INSTANA_FQDN}:443 -y -s
+
+  info "Installing instana agent ... OK"
 }
 
 function print-elapsed {
@@ -703,6 +718,10 @@ case $action in
         setup-network
         print-summary-k8
         print-elapsed
+        ;;
+      "agent")
+        install-java
+        install-agent
         ;;
       *)
         print-help
