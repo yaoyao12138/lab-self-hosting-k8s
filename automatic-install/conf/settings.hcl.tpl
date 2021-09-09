@@ -34,9 +34,8 @@ databases "zookeeper"{
 profile = "small"                                  # Specify the memory/cpu-profile to be used for components
 spans_location {                                   # Spans can be stored in either s3 or on disk, this is an s3 example
     persistent_volume {                            # Use a persistent volume for raw-spans persistence 
-        storage_class = "nfs-client" 
-        volume_name=""
-              # Storage class to be used 
+        volume_name=""                             # Name of the persistent volume to be used
+        storage_class = "nfs-client"               # Storage class to be used 
     } 
 }
 ingress "agent-ingress" {                          # This block defines the public reachable name where the agents will connect 
