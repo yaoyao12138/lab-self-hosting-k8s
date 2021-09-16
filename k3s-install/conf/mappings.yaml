@@ -1,0 +1,56 @@
+---
+apiVersion: getambassador.io/v2
+kind: Mapping
+metadata:
+    name: acceptor-backend
+    namespace: default
+spec:
+    host: "acceptor.@@INSTANA_FQDN"
+    prefix: /
+    service: acceptor.instana-core:8600
+
+# ---
+# apiVersion: getambassador.io/v2
+# kind: Host
+# metadata:
+#   name: ingress-core-host
+#   namespace: default
+# spec:
+#   hostname: "@@INSTANA_FQDN"
+#   acmeProvider:
+#     authority: none
+#   tlsSecret:
+#     name: instana-tls-secrets
+---
+apiVersion: getambassador.io/v2
+kind: Mapping
+metadata:
+    name: ingress-core-backend
+    namespace: default
+spec:
+    host: "@@INSTANA_FQDN"
+    prefix: /
+    service: https://ingress-core.instana-core:8443
+
+# ---
+# apiVersion: getambassador.io/v2
+# kind: Host
+# metadata:
+#   name: prod-ingress-host
+#   namespace: default
+# spec:
+#   hostname: "prod-instana.@@INSTANA_FQDN"
+#   acmeProvider:
+#     authority: none
+#   tlsSecret:
+#     name: prod-tls-secret
+---
+apiVersion: getambassador.io/v2
+kind: Mapping
+metadata:
+    name: prod-ingress-backend
+    namespace: default
+spec:
+    host: "prod-instana.@@INSTANA_FQDN"
+    prefix: /
+    service: https://ingress.instana-units:8443
