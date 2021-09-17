@@ -237,34 +237,6 @@ function uninstall-k3s {
 }
 
 ####################
-# Setup filesystem
-####################
-
-function setup-filesystem {
-  info "Setting up filesystem ..."
-
-  if [ ! -d "/mnt/data" ]; then
-    mkdir -p /mnt/data        # elastic, cockroachdb and kafka data dir
-    mkdir -p /mnt/metrics     # cassandra data dir
-    mkdir -p /mnt/traces      # clickhouse data dir
-    mkdir -p /var/log/instana # log dir for db's
-
-    if [-f /dev/vdb] && [-f /dev/vdc] && [-f /dev/vdd] && [-f /dev/vde]; then
-      mkfs.xfs /dev/vdb
-      mkfs.xfs /dev/vdc
-      mkfs.xfs /dev/vdd
-      mkfs.xfs /dev/vde
-      mount /dev/vdb /mnt/data
-      mount /dev/vdc /mnt/metrics
-      mount /dev/vdd /mnt/traces
-      mount /dev/vde /var/log/instana
-    fi
-  fi
-
-  info "Setting up filesystem ... OK"
-}
-
-####################
 # Setup network
 ####################
 
@@ -303,6 +275,34 @@ function install-helm {
   fi
 
   info "Installing helm3 ${HELM3_VERSION} ... OK"
+}
+
+####################
+# Setup filesystem
+####################
+
+function setup-filesystem {
+  info "Setting up filesystem ..."
+
+  if [ ! -d "/mnt/data" ]; then
+    mkdir -p /mnt/data        # elastic, cockroachdb and kafka data dir
+    mkdir -p /mnt/metrics     # cassandra data dir
+    mkdir -p /mnt/traces      # clickhouse data dir
+    mkdir -p /var/log/instana # log dir for db's
+
+    if [-f /dev/vdb] && [-f /dev/vdc] && [-f /dev/vdd] && [-f /dev/vde]; then
+      mkfs.xfs /dev/vdb
+      mkfs.xfs /dev/vdc
+      mkfs.xfs /dev/vdd
+      mkfs.xfs /dev/vde
+      mount /dev/vdb /mnt/data
+      mount /dev/vdc /mnt/metrics
+      mount /dev/vdd /mnt/traces
+      mount /dev/vde /var/log/instana
+    fi
+  fi
+
+  info "Setting up filesystem ... OK"
 }
 
 
@@ -651,23 +651,21 @@ case $action in
       "k3s")
         install-docker
         install-k3s
-        setup-filesystem
         setup-network
+        install-nfs
+        install-helm
+        install-nfs-provisioner
         ;;
       "db")
         preflight-check
+        setup-filesystem
         install-instana-console $@
         install-instana-db
         print-summary-db
         print-elapsed
         ;;
-      "nfs")
-        install-nfs
-        ;;
       "instana")
         preflight-check
-        install-helm
-        install-nfs-provisioner
         install-kubectl-instana-plugin $@
         download-instana-license
         install-instana
