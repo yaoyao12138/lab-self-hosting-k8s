@@ -39,8 +39,8 @@ spans_location {                                   # Spans can be stored in eith
     } 
 }
 ingress "agent-ingress" {                          # This block defines the public reachable name where the agents will connect 
-    hostname = "@@INSTANA_FQDN"
-    port     = 8600
+    hostname = "https://@@INSTANA_FQDN"
+    port     = 30950
 }
 units "prod" {                                     # This block defines a tenant unit named prod associated with the tenant instana
     tenant_name       = "instana"

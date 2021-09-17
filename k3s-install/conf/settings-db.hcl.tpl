@@ -5,7 +5,7 @@ dir {
   metrics    = "/mnt/metrics"     // cassandra data dir
   traces     = "/mnt/traces"      // clickhouse data dir
   data       = "/mnt/data"        // elastic, cockroachdb and kafka data dir
-  logs       = "/mnt/log/instana" // log dir for db's
+  logs       = "/var/log/instana" // log dir for db's
 }
 
 docker_repository {

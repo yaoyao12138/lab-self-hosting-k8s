@@ -219,7 +219,7 @@ function install-k3s {
   info "Installing k3s ..."
 
   # k3s server
-  curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.19.14+k3s1" INSTALL_K3S_EXEC="server --disable traefik" sh -s - --docker
+  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik" sh -s - --docker
 
   info "Installing k3s ... OK"
 }
@@ -262,6 +262,25 @@ function setup-filesystem {
   fi
 
   info "Setting up filesystem ... OK"
+}
+
+####################
+# Setup network
+####################
+
+function setup-network {
+  info "Setting up network ..."
+
+  kubectl create ns ambassador
+  kubectl apply -f https://www.getambassador.io/yaml/ambassador/ambassador-crds.yaml -n ambassador
+  kubectl apply -f conf/ambassador-rbac.yaml -n ambassador
+  kubectl apply -f conf/ambassador-service.yaml -n ambassador
+
+  openssl req -x509 -newkey rsa:4096 -keyout ${DEPLOY_LOCAL_WORKDIR}/key.pem -out ${DEPLOY_LOCAL_WORKDIR}/cert.pem -subj '/CN=ambassador-cert' -nodes
+  kubectl create secret tls tls-cert --cert=${DEPLOY_LOCAL_WORKDIR}/cert.pem --key=${DEPLOY_LOCAL_WORKDIR}/key.pem -n ambassador
+  kubectl apply -f conf/wildcard-host.yaml -n ambassador
+
+  info "Setting up network ... OK"
 }
 
 ####################
@@ -526,6 +545,12 @@ function install-instana {
   wait-deployment ingress-core instana-core
   wait-deployment ingress instana-units
 
+  cat $ROOT_DIR/conf/mappings.yaml | \
+    sed -e "s|@@INSTANA_FQDN|${INSTANA_FQDN}|g" > ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml
+
+  kubectl apply -f ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml -n ambassador
+  kubectl apply -f conf/nodeport.yaml
+
   info "Installing Instana ${INSTANA_VERSION} ... OK"
 }
 
@@ -547,30 +572,6 @@ function uninstall-instana {
 
   info "Uninstalling Instana ${INSTANA_VERSION} ... OK"
 }
-
-####################
-# Setup network
-####################
-
-function setup-network {
-  info "Setting up Instana networking ..."
-
-  kubectl apply -f https://www.getambassador.io/yaml/ambassador/ambassador-crds.yaml
-  kubectl apply -f https://www.getambassador.io/yaml/ambassador/ambassador-rbac.yaml
-  kubectl apply -f conf/ambassador-service.yaml
-
-  openssl req -x509 -newkey rsa:4096 -keyout ${DEPLOY_LOCAL_WORKDIR}key.pem -out ${DEPLOY_LOCAL_WORKDIR}cert.pem -subj '/CN=ambassador-cert' -nodes
-  kubectl create secret tls tls-cert --cert=${DEPLOY_LOCAL_WORKDIR}cert.pem --${DEPLOY_LOCAL_WORKDIR}key=key.pem -n default
-  kubectl apply -f conf/wildcard-host.yaml
-
-  cat $ROOT_DIR/conf/mappings.yaml | \
-    sed -e "s|@@INSTANA_FQDN|${INSTANA_FQDN}|g" > ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml
-
-  kubectl apply -f ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml
-
-  info "Setting up Instana networking ... OK"
-}
-
 
 ####################
 # Print summary after install
@@ -651,6 +652,7 @@ case $action in
         install-docker
         install-k3s
         setup-filesystem
+        setup-network
         ;;
       "db")
         preflight-check
@@ -669,7 +671,6 @@ case $action in
         install-kubectl-instana-plugin $@
         download-instana-license
         install-instana
-        setup-network
         print-summary-instana
         print-elapsed
         ;;

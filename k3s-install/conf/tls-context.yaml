@@ -1,0 +1,9 @@
+apiVersion: getambassador.io/v2
+kind:  TLSContext
+metadata:
+  name:  tls
+spec:
+  secret: tls-cert
+  hosts:
+  - acceptor.@@INSTANA_FQDN
+  alpn_protocols: h2,http/1.1
