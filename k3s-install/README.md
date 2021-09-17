@@ -1,9 +1,6 @@
-# The Opinionated Sandbox for Self-hosted Instana on Kubernetes
+# Self-hosted K8s Instana on single or dual nodes
 
-This util helps you launch the self-hosted Instana for Kubernetes in a KIND cluster automatically which can be used for quick demo, PoC, or dev environment. Tested on Ubuntu.
-
-Install Docker with the following
-curl https://releases.rancher.com/install-docker/19.03.sh | sh
+This util helps you launch the self-hosted Instana for Kubernetes in a k3s cluster (single or multiple node) automatically which can be used for quick demo, PoC, or dev environment. Tested on Ubuntu.
 
 ## Overview
 
@@ -11,17 +8,20 @@ Typically, you need two Ubuntu VMs:
 
 | Machine  | Resource
 |:---------|:--------
-| machine1 | 16 core, 32G memory, 250G disk
+| machine1 | 16 core, 32G memory, 4 1T disks
 | machine2 | 16 core, 64G memory, 250G disk
 
-* Use machine1 to install Instana databases and NFS service (for tracing spans persistence).
+* Use machine1 to install Instana databases, NFS service (for tracing spans persistence).
 * Use machine2 to install KIND cluster and Instana workloads run on it.
 
 ![w](architecture.png)
 
+However, with 209's Pod Anti Affinity change, you can use only one 64G memory machine to run everything on it.
+k3s is used to reduce the overall footprint and facilitate the single node deployment.
+
 ## How to run?
 
-Clone this Git repository to each of your above machines first, then run the `install.sh` to start the installation.
+Clone this Git repository to one machine, then run the `stan.sh` to start the installation.
 
 Before you install, make sure you define the following settings using environment variables:
 
@@ -30,71 +30,53 @@ export INSTANA_DOWNLOAD_KEY="your download key"
 export INSTANA_SALES_KEY="your sales key"
 ```
 
-On the machine that runs KIND cluster and Instana workloads, please also define the hostname for the machine that runs Instana databases:
-
-```console
-export INSTANA_DB_HOST="the hostname for the machine that runs Instana databases, e.g. machine1"
-export INSTANA_FQDN="the Fully Qualified Domain Names (FQDN) for all ingress into instana backend"
-```
-
-Please note here is the hostname, not the IP address. The util will auto-resolve the IP address for the specified hostname as needed.
-
-You can also modify `./config.sh` for more settings customization.
-
 ### Bring up environment
 
-Bring up Instana databases and NFS service on one machine:
+Install docker, setup k3s, configure network and NFS:
 
 ```console
-./install.sh up db
-./install.sh up nfs
+./stan.sh up k3s
 ```
 
-Bring up KIND and Instana workloads on another machine:
+Install Instana console and corresponding databases:
 
 ```console
-./install.sh up k8
+./stan.sh up db <instana-console version>
 ```
+Note: instana-console version is optional, if omitted, it will use the latest one matching instana-kubectl major version.
 
-### Use local registry
 
-You can use local registry to speed up the installation by caching all Instana images to a local registry.
-
-Bring up a local registry on the machine that runs KIND and Instana workloads. This will pre-pull all images needed for Instana installation and cache them to the local registry:
+Bring up Instana workloads:
 
 ```console
-./install.sh up reg
+./stan.sh up instana <instana-kubectl version>
 ```
+Note: instana-kubectl version is optional, if omitted, it will use the latest version.
 
-To use the local registry, add `--reg` when bring up KIND and Instana workloads on that machine:
-
-```console
-./install.sh up k8 --reg
-```
-
-### Setup instana agent for selfmonitoring
-
-To self monitor this box on the instana installation. Just roll out the instana agent with this command.
-```console
-./install.sh up agent
-```
 
 ### Clean up
+
+To take down Instana workloads on your machine:
+
+```console
+./stan.sh down instana
+```
 
 To take down Instana databases on your machine:
 
 ```console
-./install.sh down db
+./stan.sh down db
 ```
 
-To take down KIND and Instana workloads on your machine:
+To take down k3s cluster on your machine:
 
 ```console
-./install.sh down k8
+./stan.sh down k3s
 ```
+
 
 ## How to access?
 
 After Instana is launched, to access Instana UI, open https://${INSTANA_FQDN} in browser, username: admin@instana.local, password: passw0rd.
 
-Here $INSTANA_FQDN is the hostname for the machine that runs KIND and Instana workloads.
+Here $INSTANA_FQDN is the hostname for the machine that runs k3s server and Instana workloads.
