@@ -1,4 +1,4 @@
-# Self-hosted K8s Instana on single or dual nodes
+# Self-hosted K8s Instana deployment on single or dual nodes over k3s
 
 This util helps you launch the self-hosted Instana for Kubernetes in a k3s cluster (single or multiple node) automatically which can be used for quick demo, PoC, or dev environment. Tested on Ubuntu.
 
@@ -18,6 +18,8 @@ Typically, you need two Ubuntu VMs:
 
 However, with 209's Pod Anti Affinity change, you can use only one 64G memory machine to run everything on it.
 k3s is used to reduce the overall footprint and facilitate the single node deployment.
+
+![w](single-host-k3s.png)
 
 ## How to run?
 
