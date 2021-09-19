@@ -166,12 +166,7 @@ function install-helm-release {
 # Preflight check
 ####################
 
-function preflight-check {
-  if ! command -v docker >/dev/null 2>&1; then
-    error "docker not installed, exit."
-    exit 1
-  fi
-
+function preflight-check-key {
   if [[ -z $INSTANA_DOWNLOAD_KEY ]]; then
     error "INSTANA_DOWNLOAD_KEY must not be empty, exit."
     exit 1
@@ -183,16 +178,29 @@ function preflight-check {
   fi
 }
 
+function preflight-check-db {
+  if ! command -v instana >/dev/null 2>&1; then
+    if [[ -z $INSTANA_DB_HOST ]]; then
+      error "INSTANA_DB_HOST must not be empty, exit."
+      exit 1
+    fi
+  else
+    INSTANA_DB_HOST=$(hostname)
+  fi
+}
+
 ####################
 # Install docker
 ####################
 
 function install-docker {
-  info "Installing docker ..."
+  if ! command -v docker >/dev/null 2>&1; then
+    info "Installing docker ..."
 
-  curl https://releases.rancher.com/install-docker/19.03.sh | sh
+    curl https://releases.rancher.com/install-docker/19.03.sh | sh
 
-  info "Installing docker ... OK"
+    info "Installing docker ... OK"
+  fi
 }
 
 ####################
@@ -282,27 +290,33 @@ function install-helm {
 ####################
 
 function setup-filesystem {
-  info "Setting up filesystem ..."
-
   if [ ! -d "/mnt/data" ]; then
+    info "Setting up filesystem ..."
+
     mkdir -p /mnt/data        # elastic, cockroachdb and kafka data dir
     mkdir -p /mnt/metrics     # cassandra data dir
     mkdir -p /mnt/traces      # clickhouse data dir
     mkdir -p /var/log/instana # log dir for db's
 
-    if [-f /dev/vdb] && [-f /dev/vdc] && [-f /dev/vdd] && [-f /dev/vde]; then
+    if [ -e "/dev/vdb" ]; then
       mkfs.xfs /dev/vdb
-      mkfs.xfs /dev/vdc
-      mkfs.xfs /dev/vdd
-      mkfs.xfs /dev/vde
       mount /dev/vdb /mnt/data
+    fi
+    if [ -e "/dev/vdc" ]; then
+      mkfs.xfs /dev/vdc
       mount /dev/vdc /mnt/metrics
+    fi
+    if [ -e "/dev/vdd" ]; then
+      mkfs.xfs /dev/vdd
       mount /dev/vdd /mnt/traces
+    fi
+    if [ -e "/dev/vde" ]; then
+      mkfs.xfs /dev/vde
       mount /dev/vde /var/log/instana
     fi
-  fi
 
-  info "Setting up filesystem ... OK"
+    info "Setting up filesystem ... OK"
+  fi
 }
 
 
@@ -386,6 +400,8 @@ function install-instana-db {
   info "Installing Instana DB ${INSTANA_CONSOLE_VERSION} ..."
 
   echo "Installing Instana DB using the provided settings ..."
+  INSTANA_DB_HOST=${INSTANA_DB_HOST:-$(hostname)}
+
   cat ${ROOT_DIR}/conf/settings-db.hcl.tpl | \
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_DB_HOST|${INSTANA_DB_HOST}|g;" > ${DEPLOY_LOCAL_WORKDIR}/settings-db.hcl
@@ -464,6 +480,8 @@ function install-kubectl-instana-plugin {
     "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
     "https://self-hosted.instana.io/signing_key.gpg"
 
+  apt update >/dev/null 2>&1
+
   install-apt-package "instana-kubectl" ${INSTANA_KUBECTL_PLUGIN_VERSION}
 
   info "Installing Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION} ... OK"
@@ -478,12 +496,6 @@ function uninstall-kubectl-instana-plugin {
   info "Uninstalling Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION} ..."
 
   apt remove -y instana-kubectl
-
-  # add-apt-source "instana-product.list" \
-  #   "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" \
-  #   "https://self-hosted.instana.io/signing_key.gpg"
-
-  # install-apt-package "instana-kubectl" ${INSTANA_KUBECTL_PLUGIN_VERSION}
 
   info "Uninstalling Instana kubectl plugin ${INSTANA_KUBECTL_PLUGIN_VERSION} ... OK"
 }
@@ -582,7 +594,7 @@ function print-summary-db {
 
 👏 Congratulations! The Single-hosted Instana Database Layer is available!
 It installed following tools and applitions:
-- Single-hosted Instana Database Layer (Build ${INSTANA_CONSOLE_VERSION})
+- Self-hosted Instana Database Layer (Build ${INSTANA_CONSOLE_VERSION})
 
 EOF
 }
@@ -613,26 +625,26 @@ function print-elapsed {
 
 function print-help {
   cat << EOF
-The Opinionated Sandbox for Self-hosted Instana on Kubernetes
+The self-hosted K8s Instana deloyment on single or dual nodes
 
 Help you install the single-hosted Instana database layer on one machine and the
 self-hosted Instana for Kubernetes in a k3s cluster.
 
-Usage: $0 [up|down] [k3s|db|nfs|instana] [flags]
+Usage: $0 [up|down] [k3s|db|instana] <version>
 
 Examples:
   # Bring up a single node k3s cluster over docker
   $0 up k3s
   # Bring up single-hosted Instana database layer on your machine, version such as 207-3, latest if omitted
   $0 up db <version>
-  # Bring up NFS service on your machine
-  $0 up nfs
   # Bring up self-hosted Instana for Kubernetes, version such as 207-3, latest if omitted
   $0 up instana <version>
-  # Take down single-hosted Instana database layer and remove instana-console on your machine
-  $0 down db
-  # Take down self-hosted Instana for Kubernetes and remove instana-kubectl on your machine
+  # Take down self-hosted Instana for Kubernetes and remove instana-kubectl
   $0 down instana
+  # Take down single-hosted Instana database layer and remove instana-console
+  $0 down db
+  # Remove entire k3s cluster and docker from your machine
+  $0 down k3s
 EOF
 }
 
@@ -657,7 +669,8 @@ case $action in
         install-nfs-provisioner
         ;;
       "db")
-        preflight-check
+        preflight-check-key
+        install-docker
         setup-filesystem
         install-instana-console $@
         install-instana-db
@@ -665,7 +678,8 @@ case $action in
         print-elapsed
         ;;
       "instana")
-        preflight-check
+        preflight-check-key
+        preflight-check-db
         install-kubectl-instana-plugin $@
         download-instana-license
         install-instana
