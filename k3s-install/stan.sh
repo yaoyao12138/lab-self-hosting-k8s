@@ -251,14 +251,14 @@ function uninstall-k3s {
 function setup-network {
   info "Setting up network ..."
 
-  kubectl create ns ambassador
-  kubectl apply -f https://www.getambassador.io/yaml/ambassador/ambassador-crds.yaml -n ambassador
-  kubectl apply -f conf/ambassador-rbac.yaml -n ambassador
-  kubectl apply -f conf/ambassador-service.yaml -n ambassador
+  # kubectl create ns ambassador
+  kubectl apply -f https://www.getambassador.io/yaml/ambassador/ambassador-crds.yaml
+  kubectl apply -f https://www.getambassador.io/yaml/ambassador/ambassador-rbac.yaml
+  kubectl apply -f conf/ambassador-service.yaml
 
   openssl req -x509 -newkey rsa:4096 -keyout ${DEPLOY_LOCAL_WORKDIR}/key.pem -out ${DEPLOY_LOCAL_WORKDIR}/cert.pem -subj '/CN=ambassador-cert' -nodes
-  kubectl create secret tls tls-cert --cert=${DEPLOY_LOCAL_WORKDIR}/cert.pem --key=${DEPLOY_LOCAL_WORKDIR}/key.pem -n ambassador
-  kubectl apply -f conf/wildcard-host.yaml -n ambassador
+  kubectl create secret tls tls-cert --cert=${DEPLOY_LOCAL_WORKDIR}/cert.pem --key=${DEPLOY_LOCAL_WORKDIR}/key.pem
+  kubectl apply -f conf/wildcard-host.yaml
 
   info "Setting up network ... OK"
 }
@@ -560,7 +560,7 @@ function install-instana {
   cat $ROOT_DIR/conf/mappings.yaml | \
     sed -e "s|@@INSTANA_FQDN|${INSTANA_FQDN}|g" > ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml
 
-  kubectl apply -f ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml -n ambassador
+  kubectl apply -f ${DEPLOY_LOCAL_WORKDIR}/mappings.yaml
   kubectl apply -f conf/nodeport.yaml
 
   info "Installing Instana ${INSTANA_VERSION} ... OK"
