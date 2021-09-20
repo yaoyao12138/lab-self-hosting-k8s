@@ -14,12 +14,12 @@ Typically, you need two Ubuntu VMs:
 * Use machine1 to install Instana databases, NFS service (for tracing spans persistence).
 * Use machine2 to install KIND cluster and Instana workloads run on it.
 
-![w](architecture.png)
+![w](images/architecture.png)
 
 However, with 209's Pod Anti Affinity change, you can use only one 64G memory machine to run everything on it.
 k3s is used to reduce the overall footprint and facilitate the single node deployment.
 
-![w](single-host-k3s.png)
+![w](images/single-host-k3s.png)
 
 ## How to run?
 
