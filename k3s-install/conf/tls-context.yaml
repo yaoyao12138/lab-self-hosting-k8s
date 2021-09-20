@@ -5,5 +5,5 @@ metadata:
 spec:
   secret: tls-cert
   hosts:
-  - acceptor.@@INSTANA_FQDN
+    - acceptor.@@INSTANA_FQDN
   alpn_protocols: h2,http/1.1
