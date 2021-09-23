@@ -213,6 +213,10 @@ function uninstall-docker {
   docker stop $(docker ps -q)
   docker rm $(docker ps -aq)
 
+  if [[ $1 == --rmi ]]; then
+    docker rmi $(docker image -q)
+  fi
+
   apt remove -y docker-ce docker-ce-cli
   apt autoremove -y
 
@@ -538,9 +542,6 @@ function install-instana {
   INSTANA_DB_HOSTIP="$(host ${INSTANA_DB_HOST} | awk '/has.*address/{print $NF; exit}')"
   INSTANA_LICENSE=${DEPLOY_LOCAL_WORKDIR}/license
   INSTANA_SETTINGS=${ROOT_DIR}/conf/settings.hcl.tpl
-  if [[ $1 == --reg ]]; then
-    INSTANA_SETTINGS=${ROOT_DIR}/conf/settings-reg.hcl.tpl
-  fi
   cat ${INSTANA_SETTINGS} | \
     sed -e "s|@@INSTANA_DOWNLOAD_KEY|${INSTANA_DOWNLOAD_KEY}|g; \
       s|@@INSTANA_SALES_KEY|${INSTANA_SALES_KEY}|g; \
@@ -695,7 +696,7 @@ case $action in
     case $target in
       "k3s")
         uninstall-k3s
-        uninstall-docker
+        uninstall-docker $@
         ;;
       "db")
         clean-instana-db

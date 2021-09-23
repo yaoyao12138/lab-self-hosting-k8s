@@ -73,9 +73,9 @@ To take down Instana databases on your machine:
 To take down k3s cluster on your machine:
 
 ```console
-./stan.sh down k3s
+./stan.sh down k3s <--rmi>
 ```
-
+Note: --rmi is optional, if specified, all images will be purged before uninstalling docker.
 
 ## How to access?
 
