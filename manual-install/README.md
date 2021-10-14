@@ -343,45 +343,6 @@ NAME                 PROVISIONER                                     RECLAIMPOLI
 nfs-client           cluster.local/nfs-subdir-external-provisioner   Delete          Immediate              true                   2d20h
 ```
 
-### Create a PVC for Instana Core Spans Volumes
-
-Here is the yaml template that I used to create a PVC for Instana Core Spans.
-
-```yaml
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: spans-volume-claim
-  namespace: instana-core
-  annotations:
-    nfs.io/storage-path: "nfs-share" # not required, depending on whether this annotation was shown in the storage class description
-spec:
-  storageClassName: nfs-client
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-```
-
-Save above as `nfs-pvc.yaml` and apply it to KIND cluster.
-
-```console
-kubectl create ns instana-core
-```
-
-```console
-kubectl apply -f nfs-pvc.yaml
-```
-
-Make sure the pvc is created.
-
-```console
-root@kind-c1:~/instana# kubectl get pvc -n instana-core
-NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-spans-volume-claim   Bound    pvc-f792a6d3-9684-4e0e-b3bd-4eb679a9ab81   10Gi       RWX            nfs-client
-```
-
 ### Install Instana kubectl Plugin
 
 ```
@@ -529,7 +490,7 @@ units "prod" {                                 # This block defines a tenant uni
 
 spans_location {                               # Spans can be stored in either s3 or on disk, this is an s3 example
     persistent_volume {                            # Use a persistent volume for raw-spans persistence
-        volume_name = "raw-spans"             # Name of the persisten volume to be used
+        volume_name = ""             # Name of the persisten volume to be used
         storage_class = "nfs-client"           # Storage class to be used
     }
 #  s3 {
