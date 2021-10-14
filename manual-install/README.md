@@ -19,7 +19,6 @@
     - [Create key and cert for SAML](#create-key-and-cert-for-saml)
     - [Create dhparams](#create-dhparams)
     - [Create a StorageClass for Spans with NFS Server](#create-a-storageclass-for-spans-with-nfs-server)
-    - [Create a PVC for Instana Core Spans Volumes](#create-a-pvc-for-instana-core-spans-volumes)
     - [Install Instana kubectl Plugin](#install-instana-kubectl-plugin)
     - [Create the settings.hcl for Instana](#create-the-settingshcl-for-instana)
     - [Get Instana License](#get-instana-license)
@@ -450,7 +449,7 @@ sales_key      = "<Your-sales-key>"             # This will be provided to you a
 base_domain    = "kind-c1.fyre.ibm.com"         # base domain under which the login of instana will be reachable
 core_name      = "instana-core"                 # It is possible to run multiple cores, so provide a good name for this installation
 profile        = "small"                        # Sizing of instana: small/large/xlagre/xxlarge
-admin_password = "passw0rd"                # Password the initial admin user will have
+admin_password = "passw0rd"                     # Password the initial admin user will have
 token_secret   = "randomstring"                 # Seed for creating crypto tokens, pick a random 12 char string
 dhparams       = "dhparams.pem"                 # File containing Diffie-Hellman params
 tls_crt_path   = "tls.crt"                      # SSL Cert used for publicly reachable endpoints of Instana
@@ -489,8 +488,8 @@ units "prod" {                                 # This block defines a tenant uni
 #}
 
 spans_location {                               # Spans can be stored in either s3 or on disk, this is an s3 example
-    persistent_volume {                            # Use a persistent volume for raw-spans persistence
-        volume_name = ""             # Name of the persisten volume to be used
+    persistent_volume {                        # Use a persistent volume for raw-spans persistence
+        volume_name = ""                       # Name of the persistent volume to be used
         storage_class = "nfs-client"           # Storage class to be used
     }
 #  s3 {
