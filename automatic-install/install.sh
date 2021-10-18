@@ -110,8 +110,8 @@ function install-apt-package {
   else
     if [[ -n ${pkg_version} ]]; then
       if [[ ! ${pkg_ok} =~ "[${pkg_version}]" ]]; then
-        error "${required_pkg} detected but version mismatch, please uninstall the exiting version first."
-        exit 1
+        echo "${required_pkg} detected but version mismatch, upgrade to ${pkg_version}..."
+        apt-get --yes install ${arg} --allow-downgrades
       fi
     else
       echo "${required_pkg} detected."
@@ -700,6 +700,7 @@ case $action in
       "reg")
         preflight-check
         install-instana-console
+        install-kubectl-instana-plugin
         pull-images
         setup-registry
         print-elapsed
