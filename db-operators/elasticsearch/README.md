@@ -220,3 +220,8 @@ And then to apply the elasticsearch setting change by instana command:
 kubectl instana apply
 ```
 
+
+
+#### Known issue
+
+In instana **`209`** version, since there is **no username and password placeholder** in `databases` settings for elasticsearch ( and other db operator, eg. Cassandra), the elasticsearch operator based DB will NOT work until the username/password are accepted by instana core.
