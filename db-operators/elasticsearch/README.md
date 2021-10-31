@@ -26,7 +26,7 @@ Supported cloud versions:
 ### Install elasticsearch CRDs 
 
 This will create Custom Resource Definitions(CRD) used by Elasticsearch Operator,including Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent and Elastic Maps Server.
-```sh
+```console
 $ kubectl apply -f crds.yaml
 customresourcedefinition.apiextensions.k8s.io/agents.agent.k8s.elastic.co created
 customresourcedefinition.apiextensions.k8s.io/apmservers.apm.k8s.elastic.co created
@@ -42,7 +42,7 @@ customresourcedefinition.apiextensions.k8s.io/kibanas.kibana.k8s.elastic.co crea
 ### Install elasticsearch operator 
 
 This will create required resource used by Elasticsearch Operator, including namespace where elasticsearch resides and serviceaccount, secret, configmap and other stuff.
-```sh
+```console
 $ kubectl apply -f operator.yaml
 namespace/elastic-system created
 serviceaccount/elastic-operator created
