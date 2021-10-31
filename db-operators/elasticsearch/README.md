@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Install elasticsearch operator as elasticsearch database source in Instana k8s Cluster](#install-elasticsearch-operator-as-elasticsearch-database-source-in-instana-k8s-cluster)
+  - [ECK stack brief description](#eck-stack-brief-description)
+  - [Install elasticsearch CRDs](#install-elasticsearch-crds)
+  - [Install elasticsearch operator](#install-elasticsearch-operator)
+  - [Create elasticsearch instance](#create-elasticsearch-instance)
+  - [Get credential of elasticsearch instance for Instana accessing](#get-credential-of-elasticsearch-instance-for-instana-accessing)
+  - [Get service of elasticsearch cluster](#get-service-of-elasticsearch-cluster)
+  - [Apply elasticsearch operator in Instana k8s Cluster](#apply-elasticsearch-operator-in-instana-k8s-cluster)
+    - [Known issue](#known-issue)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Install elasticsearch operator as elasticsearch database source in Instana k8s Cluster
 
 This is a tutorial for how to install elasticsearch operator and configre it as elasticsearch database source in Instana Cluster, in which elasticsearch is used to store and query instana product search, event and snapshot data.
