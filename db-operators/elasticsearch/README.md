@@ -85,7 +85,7 @@ $ cat elasticsearch-instance.default.yaml
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: instana
+  name: onprem_onprem
 spec:
   version: 7.15.1
   nodeSets:
@@ -105,14 +105,14 @@ spec:
 ```
 
 Note:
-- name of Elasticsearch: default is `instana`
+- name of Elasticsearch: default is `onprem_onprem`
 - version is `7.15.1`
 - count : this is what many pods are included in elasticsearch cluster, and default number  is `3`
 - storage: elasticsearch cluster uses Persistent volumesClaim( PVC) to store index and document data, :  the default PVC storage is `1Gi` meaning 1 Giga byts volume , you can change to your data vloume, such as `2Gi` or `5Gi`
 - storageClassName:  in the sample defintion, the storageClass Name of PVC is omitted, meaning the **default** storageClass in the instana cluster is used. If not to use the default storageClass, you should define the storageClassName explicitly in the same level of `resources`.
 
 
-Below is another sample with changed  values: 
+Below is another sample with changed values: 
 ```yaml
 $ cat my-elasticsearch-instance.yaml
 apiVersion: elasticsearch.k8s.elastic.co/v1
@@ -141,10 +141,10 @@ spec:
 
 
 ### Get credential of elasticsearch instance for Instana accessing
-To access elasticsearch cluster even from the cluster internal, elasticsearch user name and password are required. After elasticsearch instance is created, a set of user name and password are prepared, that the user name is always `elastic`, and the password can be got from secret `<es-instance-name>-es-elastic-user` in namespace `elastic-system`. For example. in my env, the elasticsearch instance name is `instana`, then the password secret name is `instana-es-elastic-user`
+To access elasticsearch cluster even from the cluster internal, elasticsearch user name and password are required. After elasticsearch instance is created, a set of user name and password are prepared, that the user name is always `elastic`, and the password can be got from secret `<es-instance-name>-es-elastic-user` in namespace `elastic-system`. For example. in my env, the elasticsearch instance name is `onprem_onprem`, then the password secret name is `onprem_onprem-es-elastic-user`
 
 ```sh
-esname=instana
+esname=onprem_onprem
 espwdsecret=${esname}-es-elastic-user
 export espassword=$(kubectl get secret $espwdsecret -o jsonpath='{.data.elastic}' -n elastic-system | base64 -d )
 export esusername=elastic
@@ -157,7 +157,7 @@ echo $espassword
 
 After a elasticsearch instance is created, a elasticsearch service is prepared to access it via defaul `9200` port. 
 ```sh
-esname=instana
+esname=onprem_onprem
 export svcname=$( kubectl get svc -n elastic-system | grep "${esname}-es-http" | awk '{ print $1 }')
 echo $svcname
 ```
@@ -166,8 +166,8 @@ Then in cluster internal, elasticsearch can be accessed via its user namek, pass
 ```console
 $ curl -ks -u "$esusername:$espassword" "https://$svcname.elastic-system:9200"
 {
-  "name" : "instana-es-default-1",
-  "cluster_name" : "instana",
+  "name" : "onprem_onprem-es-default-1",
+  "cluster_name" : "onprem_onprem",
   "cluster_uuid" : "DQG31VfwS2mNnOUBn2YxmA",
   "version" : {
     "number" : "7.15.1",
@@ -221,7 +221,7 @@ databases "<elasticsearch-instance-name>-es-http" = {
 in my env, the elasticsearch instance name is `instana`, so it will look like:
 
 ```yaml
-databases "instana-es-http" = {
+databases "onprem_onprem-es-http" = {
     database       = "elasticsearch"
     namespace      = "elastic-system"
     create_service = false

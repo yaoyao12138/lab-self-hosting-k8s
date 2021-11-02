@@ -1,7 +1,7 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: instana
+  name: onprem_onprem
 spec:
   version: 7.15.1
   nodeSets:
