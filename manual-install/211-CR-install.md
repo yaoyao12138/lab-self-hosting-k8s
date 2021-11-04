@@ -1,3 +1,55 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Setting Operator-based Instana 211 Running on KIND Cluster](#setting-operator-based-instana-211-running-on-kind-cluster)
+  - [0. env preparation](#0-env-preparation)
+    - [Create a KIND Cluster](#create-a-kind-cluster)
+    - [Config NFS Server on `lhkind-instana-db`](#config-nfs-server-on-lhkind-instana-db)
+      - [Install NFS Server](#install-nfs-server)
+      - [Create a shared folder](#create-a-shared-folder)
+      - [Export the shared folder to NFS Server](#export-the-shared-folder-to-nfs-server)
+    - [Create a StorageClass for Spans with NFS Server](#create-a-storageclass-for-spans-with-nfs-server)
+  - [1. Pre-requisites](#1-pre-requisites)
+    - [tool  preparations:](#tool--preparations)
+      - [env variables](#env-variables)
+      - [Install instana-console](#install-instana-console)
+      - [Install instana plugin](#install-instana-plugin)
+    - [Install Instana DB](#install-instana-db)
+      - [Configure db-settings.hcl](#configure-db-settingshcl)
+      - [Install DB Containers](#install-db-containers)
+      - [Verify all DB Containers are running](#verify-all-db-containers-are-running)
+  - [2. Installing the Operator](#2-installing-the-operator)
+    - [2.1 Secret for Docker Registry Access](#21-secret-for-docker-registry-access)
+    - [2.2 TLS Secrets for Admission Webhook](#22-tls-secrets-for-admission-webhook)
+    - [2.3 Applying Manifests Directly](#23-applying-manifests-directly)
+    - [2.4 Rendering Manifests Only](#24-rendering-manifests-only)
+  - [3. Setting up Instana](#3-setting-up-instana)
+    - [3.1 Preparation Steps](#31-preparation-steps)
+      - [3.1.1 Creating Namespaces](#311-creating-namespaces)
+      - [3.1.2 Creating Secrets](#312-creating-secrets)
+        - [3.1.2.1 Secret `instana-registry`](#3121-secret-instana-registry)
+        - [3.1.2.2 Secret `instana-base`](#3122-secret-instana-base)
+          - [download licence](#download-licence)
+          - [create dhparams](#create-dhparams)
+          - [Create secret](#create-secret)
+        - [3.1.2.3 Secret `instana-service-provider`](#3123-secret-instana-service-provider)
+        - [3.1.2.4 Secret `instana-spans`](#3124-secret-instana-spans)
+        - [3.1.2.5 Secret `instana-proxy`](#3125-secret-instana-proxy)
+        - [3.1.2.6 Secret `instana-tls`](#3126-secret-instana-tls)
+        - [3.1.2.7 Secret `instana-smtp`](#3127-secret-instana-smtp)
+    - [3.2. Creating a Core](#32-creating-a-core)
+    - [3.3 Creating a Unit](#33-creating-a-unit)
+  - [4. Ingress](#4-ingress)
+      - [4.1 Acceptor](#41-acceptor)
+      - [4.2 Core Ingress](#42-core-ingress)
+      - [4.3 Unit Ingress](#43-unit-ingress)
+  - [5. setup kind network via apache](#5-setup-kind-network-via-apache)
+  - [6. Access Instana UI](#6-access-instana-ui)
+  - [Supplementary:  reference of  setttings.hcl vs. CR secret/core/unit](#supplementary--reference-of--setttingshcl-vs-cr-secretcoreunit)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Setting Operator-based Instana 211 Running on KIND Cluster
 
 This is a tutorial for how to **Operator-based install 211** and run Instana on [KIND](https://kind.sigs.k8s.io/) Cluster, main steps are referenced https://www.instana.com/docs/release-211/self_hosted_instana_k8s/installation .
@@ -6,7 +58,20 @@ This is a tutorial for how to **Operator-based install 211** and run Instana on 
 
 ## 0. env preparation
 
-Before we start to install instana, we need to prepare the kind k8s cluster and nfs for storageClass. 
+Before we start to install instana, we need to prepare the kind k8s cluster.
+
+ For storageClass, nfs server and client are used.  You can also use the out-of-box default `standard`  storageClass created by kind cluster.
+
+
+
+In this tutorial, I will use `lhkind-instana-db.fyre.ibm.com`  VMs for Instana DB and Instana running on KIND.
+
+```console
+$ cat /etc/hosts | grep kind
+9.112.255.59 lhkind-instana-db lhkind-instana-db.fyre.ibm.com 
+```
+
+
 
 
 ### Create a KIND Cluster
@@ -88,7 +153,7 @@ chmod 777 /mnt/nfs_share # everyone can modify files
 
 Add following to `etc/exports`
 
-```
+```console
 /mnt/nfs_share *(rw,sync,no_root_squash,no_all_squash)
 ```
 
@@ -111,9 +176,9 @@ version.BuildInfo{Version:"v3.3.3", GitCommit:"55e3ca022e40fe200fbc855938995f40b
 ```
 
 ```console
-$ helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 
-$ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner  --set nfs.server=lhkind-instana-db.fyre.ibm.com --set nfs.path=/mnt/nfs_share
+helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner  --set nfs.server=lhkind-instana-db.fyre.ibm.com --set nfs.path=/mnt/nfs_share
 ```
 
 Please make sure update `nfs.server` above to your own NFS Server.
@@ -171,16 +236,7 @@ nfs-client           cluster.local/nfs-subdir-external-provisioner   Delete     
       * Zookeeper:     3.6.3
     ```
   
-     
-
-In this tutorial, I will use `lhkind-instana-db.fyre.ibm.com`  VMs for Instana DB and Instana running on KIND.
-
-```console
-$ cat /etc/hosts | grep kind
-9.112.255.59 lhkind-instana-db lhkind-instana-db.fyre.ibm.com 
-```
-
-
+    
 
 #### env variables
 
@@ -200,7 +256,7 @@ export INSTANA_HOST=lhkind-instana-db.fyre.ibm.com
 
 #### Install instana-console
 
-```sh
+```console
 echo "deb [arch=amd64] https://self-hosted.instana.io/apt generic main" > /etc/apt/sources.list.d/instana-product.list
 wget -qO - "https://self-hosted.instana.io/signing_key.gpg" | apt-key add -
 apt-get update
@@ -215,7 +271,7 @@ apt-get install instana-console ${INSTANA_CONSOLE_VERSION}
 
 #### Install instana plugin
 
-```sh
+```console
 #  version 211-0 will be installed per current instana 211-1 automatically
 apt-get install "instana-kubectl" 
 
@@ -233,7 +289,7 @@ This section is get from [Instana Database Setup](https://www.instana.com/docs/s
 
 This is a template for the `db-setting.hcl`.
 
-```
+```cfg
 type      = "single-db"
 host_name = "<The-FQDN-of-the-machine-the-datastores-are-installed-on>"
 
@@ -327,17 +383,13 @@ OK, your DB Machine is ready.
 
 A Secret named `instana-registry` must be added for accessing the Docker registry. Username is `_`, password is your `download key`/`agent key`.
 
-```bash
+```console
 kubectl create ns instana-operator
+
 kubectl create secret docker-registry instana-registry --namespace instana-operator \
     --docker-username=_ \
     --docker-password=$INSTANA_DOWNLOAD_KEY \
     --docker-server=containers.instana.io
-```
-
-
-
-```
 ```
 
 
@@ -408,7 +460,7 @@ validatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
 
 This option creates CRDs and installs the operator deployment and associated resources on the Kubernetes cluster. Please note that special care has to be taken if you use cert-manager in combination with a custom cluster domain (i.e. not `cluster.local`) or if you generated certificates yourself.
 
-```sh
+```console
 # Install the operator in the specified namespace (e.g. instana-operator)
 kubectl instana operator apply --namespace=instana-operator
 ```
@@ -419,7 +471,7 @@ kubectl instana operator apply --namespace=instana-operator
 
 This options renders manifests to stdout or writes them to files in a given directory.
 
-```sh
+```console
 mkdir template
 
 # Write YAML files to the specified directory
@@ -438,7 +490,7 @@ There is a number of steps that have to be carried out in order to set up Instan
 
 Before we can create Core and Unit, we need Namespaces a set of Secrets for them.
 
-#### 
+
 
 #### 3.1.1 Creating Namespaces
 
@@ -466,11 +518,11 @@ metadata:
 
 Save this to a file, say `namespaces.yaml`, and apply it.
 
-```bash
+```console
 kubectl apply -f namespaces.yaml
 ```
 
-#### 
+
 
 #### 3.1.2 Creating Secrets
 
@@ -480,13 +532,13 @@ All Secrets must have the following label:
 
 - `app.kubernetes.io/name: instana`
 
-##### 
+
 
 ##### 3.1.2.1 Secret `instana-registry`
 
 Secret of type `kubernetes.io/dockerconfigjson` for Docker registry access. We've already done this for the operator namespace but will **also need it for the Core namespace**. Make sure you add required label in this case.
 
-```bash
+```console
 kubectl create secret docker-registry instana-registry --namespace instana-core \
     --docker-username=_ \
     --docker-password=$INSTANA_DOWNLOAD_KEY \
@@ -495,7 +547,7 @@ kubectl create secret docker-registry instana-registry --namespace instana-core 
 kubectl label secret instana-registry app.kubernetes.io/name=instana --namespace instana-core
 ```
 
-##### 
+
 
 ##### 3.1.2.2 Secret `instana-base`
 
@@ -525,7 +577,7 @@ openssl dhparam -out dhparams.pem 2048
 
 ###### Create secret
 
-```sh
+```console
 kubectl create secret generic instana-base --namespace instana-core \
     --from-literal=downloadKey=$INSTANA_DOWNLOAD_KEY \
     --from-literal=salesKey=$INSTANA_SALES_KEY \
@@ -552,7 +604,7 @@ An encrypted key for signing/validating messages exchanged with the IDP must be 
 
 The following commands can be used to create a combined cert/key file:
 
-```bash
+```console
 # Create the key, `passw0rd` as pass phrase
 openssl genrsa -aes128 -out key.pem 2048
 
@@ -609,7 +661,7 @@ Note that this Secret must be of type `kubernetes.io/tls`.
 
 
 
-```bash
+```console
 
 # create key and crt 
 openssl req -x509 -newkey rsa:2048 -keyout tls.key -out tls.crt -days 365 -nodes -subj "/CN=$INSTANA_HOST"
@@ -695,7 +747,7 @@ spec:
 
 Create the core CR instance.
 
-```sh
+```console
 kubectl apply -f mycore.yaml
 ```
 
@@ -730,7 +782,7 @@ serverless-acceptor-5f5f8dcbb6-j6wz2         1/1     Running   0          20h
 All secrets in `instana-core`: 
 
 ```console
-$ kubectl get svc -A | grep instana-core
+$ kubectl get secret -A | grep instana-core
 instana-core         default-token-rwxkl              kubernetes.io/service-account-token   3      47h
 instana-core         instana-base                     Opaque                                6      47h
 instana-core         instana-service-provider         Opaque                                2      46h
@@ -802,7 +854,7 @@ spec:
 
 Create the core CR instance.
 
-```sh
+```console
 kubectl apply -f mycore.yaml
 ```
 
@@ -867,7 +919,7 @@ spec:
 
 And create the NodePort service:
 
-```sh
+```console
 kubectl apply -f acceptor-svc.yaml
 ```
 
@@ -911,7 +963,7 @@ The core-ingress DNS name is configured as `baseDomain` in the [CoreSpec](https:
 
 And create the NodePort service:
 
-```sh
+```console
 kubectl apply -f ingress-core-svc.yaml
 ```
 
@@ -962,7 +1014,7 @@ spec:
 
 And create the NodePort service:
 
-```sh
+```console
 kubectl apply -f unit-ingress-svc.yaml
 ```
 
@@ -978,11 +1030,12 @@ In order to avoid keeping adding the port when accessing Instana UI, you need a 
 
 Install apache2:
 
-```sh
+```console
 apt-get update
 apt-get install apache2
-
 ```
+
+
 
 Add below configuration file to `/etc/apache2/sites-available/instana-ssl.conf`:
 
@@ -1023,7 +1076,7 @@ Note:
 
 Then run below commands to enable the configuration:
 
-```sh
+```console
 # enable the site configuration for Instana
 a2ensite instana-ssl
 
@@ -1036,9 +1089,9 @@ a2enmod ssl
 service apache2 restart
 ```
 
+
+
 Now you should be able to access Instana UI without adding any additional port, because all endpoints will use the default HTTPS port 443.
-
-
 
 
 
@@ -1053,9 +1106,13 @@ Now you should be able to access Instana UI without adding any additional port, 
 
 
 
-## 7. Reference of  setttings.hcl vs. CR secret/core/unit
+## Supplementary:  reference of  setttings.hcl vs. CR secret/core/unit
 
-| settings.hcl | secret in 211 | core | unit | Default |
+
+
+
+
+| settings.hcl | secret in 211 | core | unit | Default value if omit |
 | ------------ | ------------- | ---- | ---- | ---- |
 |admin_password          |       instana-base/adminPassword |                            |    |    |
 |download_key            |       instana-base/downloadKey   |                            |    |    |
@@ -1082,7 +1139,6 @@ Now you should be able to access Instana UI without adding any additional port, 
 |  initial_agent_key    |     |                                |               initialAgentKey                        |                                       |
 |  profile      }                    |     |                                |               resourceProfile                        |                                       |
 |enable_network_policies                   |     |    enableNetworkPolicies: false |  | False |
-
 
 
 
