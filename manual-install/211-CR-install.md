@@ -220,7 +220,6 @@ nfs-client           cluster.local/nfs-subdir-external-provisioner   Delete     
   - Instana Build 211.1
   
   - Instana DB required : see below
-  
 
 #### env variables
 
@@ -375,7 +374,7 @@ d269bec224a9        containers.instana.io/instana/release/product/zookeeper:3.6.
 
 ```
 
-OK, your DB Machine is ready.
+OK, your DB setup is ready.
 
 
 
@@ -1145,6 +1144,62 @@ Now you should be able to access Instana UI without adding any additional port, 
 |enable_network_policies                   |     |    enableNetworkPolicies: false |  | False |
 
 
+
+### **sample settings.hcl**
+
+```yaml
+admin_password = "passw0rd"                        # The initial password the administrator will receive
+download_key = "qUMhYJxjSv6uZh2SyqTEnw"            # Provided by instana
+sales_key = "pgABSBp_SnqIr5oMD68HoQ"                  # This identifies you as our customer and is required to activate your license
+base_domain = "lhkind-instana-db.fyre.ibm.com"                     # The domain under which instana will be reachable
+core_name = "instana-core"                         # A name identifiying the Core CRD created by the operator. This needs to be unique if you have more than one instana installation running
+tls_crt_path = "/root/go/src/github.com/instana/lab-self-hosting-k8s/k3s-install/.work/local/localdev/tls.crt"    # Path to the certificate to be used for the HTTPS endpoints of instana
+tls_key_path = "/root/go/src/github.com/instana/lab-self-hosting-k8s/k3s-install/.work/local/localdev/tls.key"    # Path to the key to be used for the HTTPS endpoints of instana
+license = "/root/go/src/github.com/instana/lab-self-hosting-k8s/k3s-install/.work/local/localdev/license"                      # License file
+dhparams = "/root/go/src/github.com/instana/lab-self-hosting-k8s/k3s-install/.work/local/localdev/dhparams.pem"   # Diffie–Hellman params for improved connection security
+email {                                            # configure this so instana can send alerts and invites
+  user = "<user_name>>"
+  password = "<user_password>>"
+  host = "<smtp_host_name>"
+}
+token_secret = "randomstring"                      # Secret for generating the tokens used to communicate with instana
+databases "cassandra"{                             # Database definitions, see below the code block for a detailed explanation.
+    nodes = ["9.112.255.59"]
+}
+databases "cockroachdb"{
+    nodes = ["9.112.255.59"]
+}
+databases "clickhouse"{
+    nodes = ["9.112.255.59"]
+}
+databases "elasticsearch"{
+    nodes = ["9.112.255.59"]
+}
+databases "kafka"{
+    nodes = ["9.112.255.59"]
+}
+databases "zookeeper"{
+    nodes = ["9.112.255.59"]
+}
+profile = "small"                                  # Specify the memory/cpu-profile to be used for components
+spans_location {                                   # Spans can be stored in either s3 or on disk, this is an s3 example
+    persistent_volume {                            # Use a persistent volume for raw-spans persistence
+        volume_name=""                             # Name of the persistent volume to be used
+        storage_class = "nfs-client"               # Storage class to be used
+    }
+}
+ingress "agent-ingress" {                          # This block defines the public reachable name where the agents will connect
+    hostname = "https://lhkind-instana-db.fyre.ibm.com"
+    port     = 30950
+}
+units "prod" {                                     # This block defines a tenant unit named prod associated with the tenant instana
+    tenant_name       = "instana"
+    initial_agent_key = "qUMhYJxjSv6uZh2SyqTEnw"
+    profile           = "small"
+}
+enable_network_policies = false                    # If set to true network policies will be installed (optional)
+
+```
 
 
 
