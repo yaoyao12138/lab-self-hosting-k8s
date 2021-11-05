@@ -1110,6 +1110,8 @@ Now you should be able to access Instana UI without adding any additional port, 
 
  
 
+![w](images/211-CR-running.png)
+
 
 
 ## Supplementary:  reference of  setttings.hcl vs. CR secret/core/unit
