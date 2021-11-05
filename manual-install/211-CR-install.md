@@ -15,6 +15,7 @@
       - [env variables](#env-variables)
       - [Install instana-console](#install-instana-console)
       - [Install instana plugin](#install-instana-plugin)
+      - [Instana versions](#instana-versions)
     - [Install Instana DB](#install-instana-db)
       - [Configure db-settings.hcl](#configure-db-settingshcl)
       - [Install DB Containers](#install-db-containers)
