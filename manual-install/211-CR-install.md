@@ -60,7 +60,7 @@ This is a tutorial for how to **Operator-based install 211** and run Instana on 
 
 Before we start to install instana, we need to prepare the kind k8s cluster.
 
- For storageClass, nfs server and client are used.  You can also use the out-of-box default `standard`  storageClass created by kind cluster.
+ For **storageClass**, nfs server and client are used.  You can also use the out-of-box default **`standard`**  storageClass created by kind cluster.
 
 
 
@@ -218,25 +218,8 @@ nfs-client           cluster.local/nfs-subdir-external-provisioner   Delete     
   
   - Instana Build 211.1
   
-  - Instana DB required :
+  - Instana DB required : see below
   
-    ```console
-    $ instana version
-    Instana self-hosted: 211-1 3.211.302-0 (3dfe48b1736cd5ccd97f47c875b2210c711cb9ee)
-    
-    $ kubectl instana -v
-    kubectl-instana version 211-0 (commit=14e82aa6acc912c55b48d474eb9acfc81fcdb707, date=2021-10-27T13:29:59Z, image=211-0, branch=release)
-    
-    Required Database Versions:
-      * Cassandra:     3.11.10
-      * Clickhouse:    21.3.8.76
-      * Cockroach:     21.1.7
-      * Elasticsearch: 7.10.2
-      * Kafka:         2.7.1
-      * Zookeeper:     3.6.3
-    ```
-  
-    
 
 #### env variables
 
@@ -275,6 +258,26 @@ apt-get install instana-console ${INSTANA_CONSOLE_VERSION}
 #  version 211-0 will be installed per current instana 211-1 automatically
 apt-get install "instana-kubectl" 
 
+```
+
+
+
+#### Instana versions
+
+```console
+$ instana version
+Instana self-hosted: 211-1 3.211.302-0 (3dfe48b1736cd5ccd97f47c875b2210c711cb9ee)
+
+$ kubectl instana -v
+kubectl-instana version 211-0 (commit=14e82aa6acc912c55b48d474eb9acfc81fcdb707, date=2021-10-27T13:29:59Z, image=211-0, branch=release)
+
+Required Database Versions:
+  * Cassandra:     3.11.10
+  * Clickhouse:    21.3.8.76
+  * Cockroach:     21.1.7
+  * Elasticsearch: 7.10.2
+  * Kafka:         2.7.1
+  * Zookeeper:     3.6.3
 ```
 
 
