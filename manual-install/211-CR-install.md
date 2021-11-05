@@ -565,12 +565,15 @@ kubectl label secret instana-registry app.kubernetes.io/name=instana --namespace
 
 
 
-###### download licence
+###### download licence 
 
 ```sh
 instana license download --key=${INSTANA_SALES_KEY}
-
 ```
+
+**Note:**  You must  strip out the brackets and quotes in downloaded license.
+
+
 
 ###### create dhparams
 
