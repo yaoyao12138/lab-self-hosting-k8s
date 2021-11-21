@@ -683,7 +683,7 @@ case $action in
         preflight-check-db
         install-kubectl-instana-plugin $@
         download-instana-license
-        install-instana
+        #install-instana
         print-summary-instana
         print-elapsed
         ;;
