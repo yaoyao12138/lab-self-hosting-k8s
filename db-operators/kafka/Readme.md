@@ -105,7 +105,7 @@ my-cluster-entity-operator-b74545ccb-5mjsq   3/3     Running   2          166m
 
 ## Install Instana with Kafka 
 
-Follow the step: [Installing an Operator-based Instana Setup](https://www.instana.com/docs/release-211/self_hosted_instana_k8s/installation/) 
+Follow the step: [Installing an Operator-based Instana Setup](https://www.instana.com/docs/release-211/self_hosted_instana_k8s/installation/)   
 And replace follow the kafka addresses `Datastores` [here](https://www.instana.com/docs/release-211/self_hosted_instana_k8s/installation/#325-datastores): 
 ```
 spec:
