@@ -18,7 +18,7 @@ This configuration uses the following version:
 ## Prerequisites
 
 - Kubernetes cluster
-- [kubectl cmd](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
 ## Overview
 
