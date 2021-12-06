@@ -1,8 +1,3 @@
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
 - [Install Strimizi Kafka Operator with Instana](#Install-Strimizi-Kafka-operator-with-instana)
   - [Prerequisites](#prerequisites)
   - [Overview](#overview)
@@ -11,8 +6,6 @@
     - [Create a Kafka cluster with 1 ZooKeeper and 1 Kafka broker](#create-a-kafka-cluster-with-1-zooKeeper-and-1-kafka-broker)
     - [Create a Kafka cluster with 3 ZooKeepers and 3 Kafka brokers](#create-a-kafka-cluster-with-3-zooKeepers-and-3-kafka-brokers)
   - [Install Instana with Kafka](#install-instana-with-kafka)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # Install Strimizi Kafka Operator with Instana
 
