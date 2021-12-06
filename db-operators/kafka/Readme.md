@@ -1,3 +1,4 @@
+**Table of Contents**
 - [Install Strimizi Kafka Operator with Instana](#Install-Strimizi-Kafka-operator-with-instana)
   - [Prerequisites](#prerequisites)
   - [Overview](#overview)
