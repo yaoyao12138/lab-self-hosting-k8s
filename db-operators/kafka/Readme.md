@@ -115,5 +115,5 @@ spec:
         - my-cluster-kafka-bootstrap.kafka
 ```
 
-Then do what you need through Instana.
+Then do what you need with Instana.
 
